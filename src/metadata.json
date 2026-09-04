@@ -2,7 +2,9 @@
   "uuid": "ghostty-quick-terminal@abn.is",
   "name": "Ghostty Quick Terminal",
   "description": "Drop-down Ghostty terminal for GNOME on Wayland. The shell owns the window; Ghostty owns the terminal.",
-  "shell-version": ["50"],
+  "shell-version": [
+    "50"
+  ],
   "settings-schema": "org.gnome.shell.extensions.ghostty-quick-terminal",
   "url": "https://github.com/abn/gnome-extension-ghostty-quick-terminal",
   "version-name": "0.1.0"
