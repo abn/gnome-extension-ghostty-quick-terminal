@@ -18,6 +18,12 @@ changes and ask for a separate change instead.
 A change is done only when `make check` passes with real captured output.
 Read the output, do not trust the claim.
 
+## Releasing
+
+Tag `vX.Y.Z` after setting `version-name`. The workflow packs, publishes
+the GitHub release and waits for your approval before uploading to
+extensions.gnome.org. See [Releasing](releasing.md).
+
 ## Docs
 
 Any behaviour change updates the relevant pages and the log. Keep the log

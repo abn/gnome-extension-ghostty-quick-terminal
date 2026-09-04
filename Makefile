@@ -5,7 +5,7 @@ SCHEMA := src/schemas/org.gnome.shell.extensions.ghostty-quick-terminal.gschema.
 ZIP    := dist/$(UUID).shell-extension.zip
 JS     := $(shell find src tests -name '*.js')
 
-.PHONY: setup build install uninstall check fmt lint test clean docs/check shell/check js/check schema/check test/headless help
+.PHONY: setup build install uninstall check fmt lint test clean docs/check shell/check js/check schema/check metadata/check release/check test/headless help
 
 ##@ Bootstrap
 
@@ -32,7 +32,7 @@ check: lint test ## Run every quality gate (used by hooks and CI)
 fmt: ## Format source files
 	@printf 'fmt: no formatter configured yet\n'
 
-lint: docs/check shell/check js/check schema/check ## Lint docs, scripts, JS and schema
+lint: docs/check shell/check js/check schema/check metadata/check ## Lint docs, scripts, JS, schema and metadata
 
 test: ## Run unit tests for the pure modules
 	gjs -m tests/run.js
@@ -50,6 +50,18 @@ docs/check: ## Validate the docs wiki (OKF v0.2 and privacy hygiene)
 
 js/check: ## Syntax-check every JS module
 	@for f in $(JS); do node --input-type=module --check < "$$f" || exit 1; done; printf 'js/check: ok\n'
+
+# extensions.gnome.org owns the version field; shipping one breaks updates.
+metadata/check: ## Validate metadata.json for extensions.gnome.org
+	@python3 -c 'import json,sys; m=json.load(open("src/metadata.json")); \
+	  sys.exit("metadata/check: drop the version field" if "version" in m else 0); ' \
+	  && printf 'metadata/check: ok\n'
+
+release/check: ## Check that TAG matches version-name in metadata.json
+	@test -n "$(TAG)" || { printf 'release/check: pass TAG=vX.Y.Z\n'; exit 1; }
+	@python3 -c 'import json,sys; m=json.load(open("src/metadata.json")); \
+	  sys.exit(0 if "v"+m["version-name"]=="$(TAG)" else "release/check: tag $(TAG) does not match version-name "+m["version-name"])' \
+	  && printf 'release/check: ok\n'
 
 schema/check: ## Validate the GSettings schema
 	@glib-compile-schemas --strict --dry-run src/schemas && printf 'schema/check: ok\n'

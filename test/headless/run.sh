@@ -13,7 +13,6 @@ zip=$(realpath "$1")
 uuid=$2
 root=$(git rev-parse --show-toplevel)
 sandbox=$root/build/headless
-here=$root/test/headless
 
 # The private environment must be in place before the session bus starts,
 # because services it activates (dconf in particular) inherit it. Otherwise

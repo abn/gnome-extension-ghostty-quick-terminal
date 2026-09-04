@@ -15,3 +15,5 @@ elsewhere.
 - Added the approach page, the components page, installation and
   configuration guides, the settings reference and the testing guide.
 - Rewrote the overview to reflect the first working version.
+- Added the releasing guide covering the GitHub workflows and the upload
+  to extensions.gnome.org.

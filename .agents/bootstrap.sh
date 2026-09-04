@@ -10,10 +10,8 @@ cd "$root"
 git config core.hooksPath .agents/hooks
 chmod +x .agents/hooks/* .agents/scripts/*.sh
 
-# Tool shims: each one only points at AGENTS.md. Listed in .gitignore.
-for shim in CLAUDE.md; do
-  printf 'Read AGENTS.md and follow it.\n' > "$shim"
-done
+# Tool shim: only points at AGENTS.md. Listed in .gitignore.
+printf 'Read AGENTS.md and follow it.\n' > CLAUDE.md
 
 mkdir -p .scratch/inbox .scratch/outbox .scratch/tasks .scratch/assets
 
