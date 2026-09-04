@@ -3,7 +3,7 @@
   <schema id="org.gnome.shell.extensions.ghostty-quick-terminal"
           path="/org/gnome/shell/extensions/ghostty-quick-terminal/">
     <key name="toggle" type="as">
-      <default><![CDATA[['<Super>grave']]]></default>
+      <default><![CDATA[['<Control>grave']]]></default>
       <summary>Toggle shortcut</summary>
       <description>Shows, focuses or hides the quick terminal.</description>
     </key>

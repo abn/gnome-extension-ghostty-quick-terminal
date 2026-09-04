@@ -29,8 +29,8 @@ Log out and back in, then enable it:
 gnome-extensions enable ghostty-quick-terminal@abn.is
 ```
 
-Press Super and grave, the key left of 1, to drop the terminal down. Press
-it again to put it away. The shortcut can be changed in the preferences.
+Press Control and grave, the key left of 1, to drop the terminal down.
+Press it again to put it away. The shortcut can be changed in the preferences.
 
 ## Configure
 

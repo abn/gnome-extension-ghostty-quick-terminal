@@ -29,8 +29,8 @@ a new extension after you log out and back in. After that:
 gnome-extensions enable ghostty-quick-terminal@abn.is
 ```
 
-Press Super and grave (the key left of 1) to drop the terminal down. Press
-it again to put it away.
+Press Control and grave (the key left of 1) to drop the terminal down.
+Press it again to put it away.
 
 ## Uninstall
 
