@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="ghostty-quick-terminal">
+<schemalist>
   <schema id="org.gnome.shell.extensions.ghostty-quick-terminal"
           path="/org/gnome/shell/extensions/ghostty-quick-terminal/">
     <key name="toggle" type="as">

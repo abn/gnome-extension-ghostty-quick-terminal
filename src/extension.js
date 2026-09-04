@@ -1,3 +1,4 @@
+import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -63,7 +64,9 @@ export default class GhosttyQuickTerminalExtension extends Extension {
             const config = await loadQuickTerminalConfig(command, this._cancellable);
             this._terminal?.setConfig(config);
         } catch (e) {
-            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+            const cancelled = e instanceof GLib.Error &&
+                e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED);
+            if (!cancelled)
                 console.warn(`${this.uuid}: could not read Ghostty config: ${e.message}`);
         }
     }

@@ -7,8 +7,6 @@ import Meta from 'gi://Meta';
 
 import {parseShowConfig, quickTerminalSettings} from './ghosttyConfig.js';
 
-Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
-
 // Application id of the quick terminal. Distinct from Ghostty's default so
 // the window never joins the user's regular Ghostty instance.
 export const APP_ID = 'is.abn.GhosttyQuickTerminal';
@@ -58,6 +56,7 @@ export class GhosttyClient {
 }
 
 export async function loadQuickTerminalConfig(command, cancellable) {
+    Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
     const proc = Gio.Subprocess.new(
         [command, '+show-config'],
         Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE);
