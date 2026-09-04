@@ -6,13 +6,15 @@ import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+const GHOSTTY_REFERENCE = 'https://ghostty.org/docs/config/reference#quick-terminal-position';
+
 export default class GhosttyQuickTerminalPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
         const page = new Adw.PreferencesPage();
         page.add(this._shortcutGroup(window, settings));
         page.add(this._terminalGroup(settings));
-        page.add(this._ghosttyGroup());
+        page.add(this._ghosttyGroup(window));
         window.add(page);
     }
 
@@ -60,14 +62,24 @@ export default class GhosttyQuickTerminalPreferences extends ExtensionPreference
         return group;
     }
 
-    _ghosttyGroup() {
-        return new Adw.PreferencesGroup({
+    _ghosttyGroup(window) {
+        const group = new Adw.PreferencesGroup({
             title: 'From the Ghostty config',
-            description: 'Position, autohide, animation duration and screen are read from ' +
-                'quick-terminal-position, quick-terminal-autohide, ' +
-                'quick-terminal-animation-duration and quick-terminal-screen in your ' +
-                'Ghostty config. Changes apply when the file is saved.',
+            description: 'Position, autohide, animation duration and screen come from ' +
+                'the quick-terminal keys in your Ghostty config and apply when the ' +
+                'file is saved.',
         });
+        const row = new Adw.ActionRow({
+            title: 'Ghostty configuration reference',
+            subtitle: 'quick-terminal-position and related keys',
+            activatable: true,
+        });
+        row.add_suffix(new Gtk.Image({icon_name: 'adw-external-link-symbolic', valign: Gtk.Align.CENTER}));
+        row.connect('activated', () => {
+            new Gtk.UriLauncher({uri: GHOSTTY_REFERENCE}).launch(window, null, null);
+        });
+        group.add(row);
+        return group;
     }
 
     _captureShortcut(parent, settings) {

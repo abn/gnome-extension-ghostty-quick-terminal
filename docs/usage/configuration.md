@@ -24,7 +24,9 @@ Changes are picked up when the file is saved.
 | `quick-terminal-screen` | `mouse` for the monitor under the pointer, anything else for the primary monitor | Which monitor |
 
 Everything else in the Ghostty config applies as usual: font, theme,
-shell integration, keybinds inside the terminal.
+shell integration, keybinds inside the terminal. The extension's preferences
+window links to the Ghostty configuration reference for these keys rather
+than duplicating them as settings.
 
 Do not bind `toggle_quick_terminal` with a `global:` prefix in Ghostty. On
 GNOME that action does nothing, and the global shortcut would compete with
