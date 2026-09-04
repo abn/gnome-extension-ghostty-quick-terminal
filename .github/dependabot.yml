@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Dependabot has no fortnightly interval; the 1st and 15th come closest.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: cron
+      cron: "0 9 1,15 * *"
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
