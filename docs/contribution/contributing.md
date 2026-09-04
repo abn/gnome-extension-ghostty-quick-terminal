@@ -16,6 +16,10 @@ generates local tool shims.
 make setup
 ```
 
+`make check` installs ESLint and GNOME Shell's rules for it into
+`node_modules` on first run; that needs `npm` and network access. The
+tooling never ships in the extension.
+
 ## Workflow
 
 1. State the scope in one sentence: what unit of work, what target, what

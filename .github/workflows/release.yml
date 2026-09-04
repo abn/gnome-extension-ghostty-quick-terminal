@@ -20,7 +20,7 @@ jobs:
       - name: Install toolchain
         run: >-
           dnf install -y --setopt=install_weak_deps=False
-          git make gjs glib2 gnome-shell nodejs ShellCheck gh
+          git make gjs glib2 gnome-shell nodejs nodejs-npm ShellCheck gh
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag }}

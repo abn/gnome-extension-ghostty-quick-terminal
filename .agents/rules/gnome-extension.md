@@ -42,6 +42,8 @@ submission. Sources:
 
 - Readable, reviewable JavaScript. No minification, no transpiled
   artefacts, no generated bulk. Lines under 200 characters.
+- ESLint with GNOME Shell's own rules runs in `make check`; `make fmt`
+  applies the fixable part. A change is not done with lint findings open.
 - No optional chaining or type checks on methods that are guaranteed to
   exist. Use `instanceof GLib.Error` before calling `matches`.
 - No try-catch around `destroy()`, `disconnect()`, `cancel()` or

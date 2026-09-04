@@ -20,5 +20,6 @@ elsewhere.
 - Documented the clipboard-tool exception to autohide on the approach page
   and the components table.
 - Rewrote the releasing guide for Release Please.
+- Noted the ESLint tooling in the contributing guide.
 - Documented the shipped override file and Ghostty's config-file load order
   on the approach page and the components table.

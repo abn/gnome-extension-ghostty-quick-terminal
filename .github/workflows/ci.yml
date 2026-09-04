@@ -18,7 +18,7 @@ jobs:
       - name: Install toolchain
         run: >-
           dnf install -y --setopt=install_weak_deps=False
-          git make gjs glib2 gnome-shell nodejs ShellCheck
+          git make gjs glib2 gnome-shell nodejs nodejs-npm ShellCheck
       - uses: actions/checkout@v4
       - name: Trust the checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"

@@ -11,3 +11,13 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: ci
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: cron
+      cron: "0 9 1,15 * *"
+    groups:
+      tooling:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore

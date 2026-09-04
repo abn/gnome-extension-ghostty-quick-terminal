@@ -5,6 +5,8 @@ SCHEMA := src/schemas/org.gnome.shell.extensions.ghostty-quick-terminal.gschema.
 ZIP    := dist/$(UUID).shell-extension.zip
 JS     := $(shell find src tests -name '*.js')
 
+ESLINT := node_modules/.bin/eslint
+
 .PHONY: setup build install uninstall check fmt lint test clean docs/check shell/check js/check schema/check metadata/check release/check test/headless help
 
 ##@ Bootstrap
@@ -29,8 +31,8 @@ uninstall: ## Remove the extension for the current user
 
 check: lint test ## Run every quality gate (used by hooks and CI)
 
-fmt: ## Format source files
-	@printf 'fmt: no formatter configured yet\n'
+fmt: $(ESLINT) ## Fix what ESLint can fix
+	$(ESLINT) . --fix
 
 lint: docs/check shell/check js/check schema/check metadata/check ## Lint docs, scripts, JS, schema and metadata
 
@@ -48,8 +50,13 @@ clean: ## Remove build artifacts
 docs/check: ## Validate the docs wiki (OKF v0.2 and privacy hygiene)
 	@./.agents/scripts/docs-check.sh docs
 
-js/check: ## Syntax-check every JS module
-	@for f in $(JS); do node --input-type=module --check < "$$f" || exit 1; done; printf 'js/check: ok\n'
+# GNOME Shell's own ESLint rules, as the review guidelines recommend.
+js/check: $(ESLINT) ## Lint JS with GNOME Shell's ESLint rules
+	@$(ESLINT) . && printf 'js/check: ok\n'
+
+$(ESLINT): package.json package-lock.json
+	npm ci --no-audit --no-fund --loglevel=error
+	@touch $(ESLINT)
 
 # extensions.gnome.org owns the version field; shipping one breaks updates.
 metadata/check: ## Validate metadata.json for extensions.gnome.org
