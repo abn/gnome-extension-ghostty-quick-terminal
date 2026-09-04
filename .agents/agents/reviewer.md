@@ -12,7 +12,9 @@ would, looking for reasons to reject before looking for reasons to approve.
 - Correctness: the change does what the scope says, including edge cases.
 - Minimality: the smallest clean change that satisfies the scope, without
   sacrificing quality or coverage.
-- Invariants: everything in `AGENTS.md` and `.agents/rules/` holds.
+- Invariants: everything in `AGENTS.md` and `.agents/rules/` holds. For
+  changes under `src/`, walk `.agents/rules/gnome-extension.md` rule by
+  rule; those are the grounds for rejection at extensions.gnome.org.
 - Regression risk: what could this break, and is it covered?
 - Tests and docs updated together with the code.
 - Commit hygiene: conventional messages, logical units, no trailers.

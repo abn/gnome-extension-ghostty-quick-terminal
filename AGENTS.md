@@ -53,6 +53,9 @@ green with real captured output. Do not report completion without it.
 - `.agents/agents/` holds role cards for subagents (technical writer,
   reviewer).
 - `.agents/rules/` holds project rules that extend the global standards.
+  Read `.agents/rules/project.md` and `.agents/rules/gnome-extension.md`
+  before changing anything under `src/`; the second one is what the
+  extensions.gnome.org reviewer will hold the code to.
 - A clean reviewer pass (see `.agents/agents/reviewer.md`) gates every push.
   The human holds the final approve-to-push decision.
 
