@@ -8,7 +8,7 @@ CLAUDE.md
 build/
 dist/
 *.zip
-schemas/gschemas.compiled
+src/schemas/gschemas.compiled
 node_modules/
 
 # Editor and OS droppings

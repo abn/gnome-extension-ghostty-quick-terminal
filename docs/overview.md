@@ -13,10 +13,11 @@ same key, in the style of Guake or Ghostty's own quick terminal on macOS.
 
 ## Why
 
-Ghostty ships a quick terminal on macOS but has no equivalent on GNOME, and
-GNOME Shell on Wayland does not let an application position its own windows.
-The extension does the window management on the shell side so Ghostty can
-stay a plain application.
+Ghostty ships a quick terminal, but on Linux it needs the `wlr-layer-shell`
+protocol, which Mutter does not implement, so on GNOME the feature is
+disabled. GNOME Shell on Wayland also does not let an application position
+its own windows. The extension does the window management on the shell side
+so Ghostty can stay a plain application.
 
 ## Goals
 
@@ -27,7 +28,15 @@ stay a plain application.
 - Maintainable: small surface, settings through a schema, documented
   decisions.
 
+## How
+
+The shell launches a dedicated Ghostty process as a Mutter client and does
+the work a layer shell would do: placement, stacking, workspaces, show and
+hide. Ghostty does everything a terminal does, with the user's own config.
+See the [approach](design/approach.md) and the
+[decision record](adr/0002-ghostty-draws-the-shell-owns-the-window.md).
+
 ## Status
 
-No extension code exists yet. This bundle records the intended design so the
-implementation has something to be checked against.
+First working version targeting GNOME Shell 50. See
+[installation](usage/installation.md).

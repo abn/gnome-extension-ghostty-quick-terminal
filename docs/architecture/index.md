@@ -1,4 +1,3 @@
 # Architecture
 
-Component breakdown and key subsystems. Pages are added as the
-implementation takes shape.
+- [Components](components.md): the modules and what each owns.

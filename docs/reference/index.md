@@ -1,3 +1,3 @@
 # Reference
 
-Settings and command reference. Generated from the schema once it exists.
+- [Settings schema](settings.md): extension GSettings keys.

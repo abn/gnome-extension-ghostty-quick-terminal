@@ -1,4 +1,4 @@
 # Usage
 
-Guides and worked examples. Pages are added once the extension can be
-installed.
+- [Installation](installation.md): build, install and enable.
+- [Configuration](configuration.md): Ghostty keys and extension settings.

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="ghostty-quick-terminal">
+  <schema id="org.gnome.shell.extensions.ghostty-quick-terminal"
+          path="/org/gnome/shell/extensions/ghostty-quick-terminal/">
+    <key name="toggle" type="as">
+      <default><![CDATA[['<Super>grave']]]></default>
+      <summary>Toggle shortcut</summary>
+      <description>Shows, focuses or hides the quick terminal.</description>
+    </key>
+    <key name="size" type="i">
+      <range min="10" max="100"/>
+      <default>40</default>
+      <summary>Size</summary>
+      <description>Percentage of the work area the terminal takes along the axis it drops from. Height for top and bottom, width for left and right, both for center.</description>
+    </key>
+    <key name="ghostty-command" type="s">
+      <default>'ghostty'</default>
+      <summary>Ghostty command</summary>
+      <description>Program launched for the quick terminal.</description>
+    </key>
+    <key name="extra-args" type="as">
+      <default>[]</default>
+      <summary>Extra arguments</summary>
+      <description>Additional command line arguments appended when launching Ghostty.</description>
+    </key>
+  </schema>
+</schemalist>
