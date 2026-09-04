@@ -54,10 +54,19 @@ export class QuickTerminal {
     adopt(client) {
         this._client = client;
         client.onExit = () => this._onClientExit(client);
+        this._adoptOwnedWindow();
+    }
+
+    // Takes the first window the client owns, if any. Used after a lock and
+    // when the current window closes while the process has another one.
+    _adoptOwnedWindow() {
+        if (!this._client?.alive)
+            return;
         for (const actor of global.get_window_actors()) {
-            if (client.ownsWindow(actor.meta_window)) {
-                this._attach(actor.meta_window);
-                this._state = actor.meta_window.minimized ? 'hidden' : 'visible';
+            const window = actor.meta_window;
+            if (this._client.ownsWindow(window)) {
+                this._attach(window);
+                this._state = window.minimized ? 'hidden' : 'visible';
                 return;
             }
         }
@@ -189,8 +198,13 @@ export class QuickTerminal {
             window.stick();
         if (!window.above)
             window.make_above();
-        this._unmanagedId = window.connect('unmanaged', () => this._detach());
+        this._unmanagedId = window.connect('unmanaged', () => this._onUnmanaged());
         this._place();
+    }
+
+    _onUnmanaged() {
+        this._detach();
+        this._adoptOwnedWindow();
     }
 
     _detach() {
