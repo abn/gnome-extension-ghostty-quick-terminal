@@ -17,14 +17,19 @@ and when it is visible.
    D-Bus interface, loads the quick-terminal keys from Ghostty's config and
    starts watching the config directory.
 2. The first toggle launches Ghostty as a Mutter Wayland client with
-   single-instance mode off, no decorations and a private application id.
+   single-instance mode off and a private application id. Decorations,
+   saved window state and quitting after the last window are pinned in a
+   small config file the extension ships and passes with `--config-file`.
+   Ghostty applies such imports after command line flags, so the pin holds
+   even when the user's own drop-ins say otherwise.
 3. When Mutter reports a window owned by that client, the extension hides
    it from the window list, sticks it to all workspaces, keeps it above,
    places it according to position and size, and slides it in.
 4. A further toggle slides it out and minimises it, or focuses it when it is
    visible but not focused.
 5. Closing the terminal from inside ends the process. The next toggle
-   launches a fresh one.
+   launches a fresh one. If the process outlives its last window, the next
+   toggle replaces it.
 
 ## Placement
 

@@ -13,15 +13,16 @@ export const APP_ID = 'is.abn.GhosttyQuickTerminal';
 
 const DEBOUNCE_MS = 500;
 
-export function launchArgs(command, extraArgs = []) {
+// Ghostty applies config-file imports after command line flags, so the
+// keys a drop-down must not lose live in a file passed as one.
+export const OVERRIDES_FILE = 'quick-terminal.conf';
+
+export function launchArgs(command, overridesPath, extraArgs = []) {
     return [
         command,
         `--class=${APP_ID}`,
         '--gtk-single-instance=false',
-        '--window-decoration=none',
-        '--gtk-titlebar=false',
-        '--window-save-state=never',
-        '--quit-after-last-window-closed=true',
+        `--config-file=${overridesPath}`,
         ...extraArgs,
     ];
 }

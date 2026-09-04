@@ -64,12 +64,13 @@ export class QuickTerminal {
 
     // Takes the first window the client owns, if any. Used after a lock and
     // when the current window closes while the process has another one.
-    _adoptOwnedWindow() {
+    // A window that is on its way out is still listed at that moment.
+    _adoptOwnedWindow(closing = null) {
         if (!this._client?.alive)
             return;
         for (const actor of global.get_window_actors()) {
             const window = actor.meta_window;
-            if (this._client.ownsWindow(window)) {
+            if (window !== closing && this._client.ownsWindow(window)) {
                 this._attach(window);
                 this._state = window.minimized ? 'hidden' : 'visible';
                 return;
@@ -86,19 +87,29 @@ export class QuickTerminal {
 
     show() {
         if (!this._client?.alive) {
+            let client;
             try {
-                this._client = this._launch();
+                client = this._launch();
             } catch (e) {
                 this._state = 'hidden';
                 console.warn(`Ghostty Quick Terminal: could not launch Ghostty: ${e.message}`);
                 return;
             }
+            this._client = client;
             this._state = 'launching';
-            this._client.onExit = () => this._onClientExit(this._client);
+            client.onExit = () => this._onClientExit(client);
             return;
         }
         if (!this._window) {
-            this._state = 'launching';
+            // Our own launch is still on its way. Otherwise the process
+            // outlived its last window, for instance under Ghostty's
+            // quit-after-last-window-closed-delay, and would never map
+            // another one; replace it.
+            if (this._state === 'launching')
+                return;
+            this._client.terminate();
+            this._client = null;
+            this.show();
             return;
         }
 
@@ -213,8 +224,9 @@ export class QuickTerminal {
     }
 
     _onUnmanaged() {
+        const closing = this._window;
         this._detach();
-        this._adoptOwnedWindow();
+        this._adoptOwnedWindow(closing);
     }
 
     _detach() {

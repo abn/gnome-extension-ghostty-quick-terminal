@@ -55,6 +55,12 @@ ev() {
   [[ "$out" == "(true, "* ]] || { printf 'eval failed: %s\n' "$out" >&2; return 1; }
   python3 -c 'import ast,json,sys; print(json.loads(ast.literal_eval(sys.argv[1][7:-1])))' "$out"
 }
+ext_settings() {
+  local op=$1
+  shift
+  GSETTINGS_SCHEMA_DIR=$sandbox/data/gnome-shell/extensions/$uuid/schemas \
+    gsettings "$op" org.gnome.shell.extensions.ghostty-quick-terminal "$@"
+}
 fail() {
   printf 'headless: FAIL %s\n' "$1" >&2
   grep -A6 -E "$uuid|GhosttyQuickTerminal" "$sandbox/shell.log" | grep -vE 'dbus-daemon|AddMatch' | head -30 >&2
@@ -162,18 +168,32 @@ kill $bystander 2>/dev/null
 sleep 1
 step 'autohide still works for other windows'
 
+# A process that outlives its last window must be replaced, not waited on.
+# A config-file passed after the extension's own overrides wins over them.
+printf 'quit-after-last-window-closed = false\n' > "$sandbox/linger.conf"
+ext_settings set extra-args "['--config-file=$sandbox/linger.conf']"
+pid=$(ev 'global.get_window_actors().map(a=>a.meta_window).find(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").get_pid()')
+kill "$pid"
+sleep 2
+ext_call Show >/dev/null
+sleep 4
+ev 'global.get_window_actors().map(a=>a.meta_window).find(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").delete(global.get_current_time()); "closed"' >/dev/null
+sleep 3
+pgrep -f -- 'linger.conf' >/dev/null || fail 'lingering Ghostty process expected but not found'
+ext_call Toggle >/dev/null
+sleep 5
+has=$(gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/GhosttyQuickTerminal \
+  --method org.freedesktop.DBus.Properties.Get is.abn.GhosttyQuickTerminal HasWindow)
+[[ "$has" == "(<true>,)" ]] || fail "toggle after a windowless process did not bring a window back: $has"
+ext_settings reset extra-args
+step 'windowless process is replaced on toggle'
+
 # A missing Ghostty must be logged, not thrown. End the running terminal
 # first so the next toggle has to launch.
 pid=$(ev 'global.get_window_actors().map(a=>a.meta_window).find(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").get_pid()')
 kill "$pid"
 sleep 2
-ext_settings() {
-  local op=$1
-  shift
-  GSETTINGS_SCHEMA_DIR=$sandbox/data/gnome-shell/extensions/$uuid/schemas \
-    gsettings "$op" org.gnome.shell.extensions.ghostty-quick-terminal ghostty-command "$@"
-}
-ext_settings set /nonexistent/ghostty
+ext_settings set ghostty-command /nonexistent/ghostty
 sleep 1
 ext_call Toggle >/dev/null
 sleep 1
@@ -181,7 +201,7 @@ grep -q 'could not launch Ghostty' "$sandbox/shell.log" || fail 'missing Ghostty
 visible=$(gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/GhosttyQuickTerminal \
   --method org.freedesktop.DBus.Properties.Get is.abn.GhosttyQuickTerminal Visible)
 [[ "$visible" == "(<false>,)" ]] || fail "Visible is $visible after a failed launch"
-ext_settings reset
+ext_settings reset ghostty-command
 step 'missing Ghostty is reported and recovers'
 
 gnome-extensions disable "$uuid"

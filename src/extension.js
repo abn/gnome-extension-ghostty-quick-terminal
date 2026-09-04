@@ -7,7 +7,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {DBusApi} from './lib/dbus.js';
-import {ConfigWatcher, GhosttyClient, launchArgs, loadQuickTerminalConfig} from './lib/ghostty.js';
+import {ConfigWatcher, GhosttyClient, OVERRIDES_FILE, launchArgs, loadQuickTerminalConfig} from './lib/ghostty.js';
 import {QuickTerminal} from './lib/terminal.js';
 
 // The shell disables extensions when the screen locks. The Ghostty process
@@ -22,6 +22,7 @@ export default class GhosttyQuickTerminalExtension extends Extension {
             settings: this._settings,
             launch: () => new GhosttyClient(launchArgs(
                 this._settings.get_string('ghostty-command'),
+                this.dir.get_child(OVERRIDES_FILE).get_path(),
                 this._settings.get_strv('extra-args'))),
         });
         if (parkedClient?.alive)

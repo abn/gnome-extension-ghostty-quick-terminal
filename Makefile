@@ -16,9 +16,9 @@ setup: ## Install git hooks and generate tool shims
 
 build: $(ZIP) ## Pack the extension into dist/
 
-$(ZIP): $(JS) src/metadata.json $(SCHEMA)
+$(ZIP): $(JS) src/metadata.json src/quick-terminal.conf $(SCHEMA)
 	@mkdir -p dist
-	gnome-extensions pack --force --out-dir=dist --extra-source=lib --schema=schemas/$(notdir $(SCHEMA)) src
+	gnome-extensions pack --force --out-dir=dist --extra-source=lib --extra-source=quick-terminal.conf --schema=schemas/$(notdir $(SCHEMA)) src
 
 install: build ## Install the packed extension for the current user
 	gnome-extensions install --force $(ZIP)

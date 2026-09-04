@@ -21,6 +21,7 @@ covered by unit tests run with `gjs`.
 | `lib/dbus.js` | The `Toggle`, `Show`, `Hide` and `ReloadConfig` D-Bus methods |
 | `prefs.js` | The preferences window |
 | `schemas/` | The GSettings schema |
+| `quick-terminal.conf` | Ghostty keys pinned for the drop-down, passed with `--config-file` |
 
 ## Verification
 
