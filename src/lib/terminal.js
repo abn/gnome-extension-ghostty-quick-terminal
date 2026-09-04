@@ -3,11 +3,14 @@
 // hide with a slide.
 
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {clampFraction, hiddenState, sameRect, targetRect} from './geometry.js';
 import {DEFAULT_CONFIG} from './ghosttyConfig.js';
+import {isWlClipboard, looksLikeWlClipboard} from './wlclipboard.js';
 
 const FIXUP_LIMIT = 10;
 
@@ -24,6 +27,8 @@ export class QuickTerminal {
         this._fixup = null;
         this._unmanagedId = 0;
         this._mapId = 0;
+        this._focusCheck = null;
+        this._clipboardWatch = new Map();
         this._windowCreatedId = global.display.connect('window-created',
             (display, window) => this._onWindowCreated(window));
         this._focusId = global.display.connect('notify::focus-window',
@@ -138,6 +143,9 @@ export class QuickTerminal {
         global.display.disconnect(this._windowCreatedId);
         global.display.disconnect(this._focusId);
         global.display.disconnect(this._workareasId);
+        this._cancelFocusCheck();
+        for (const window of [...this._clipboardWatch.keys()])
+            this._unwatchClipboard(window);
         if (this._actor) {
             this._actor.remove_all_transitions();
             this._setActorState({x: 0, y: 0, opacity: 255});
@@ -174,6 +182,8 @@ export class QuickTerminal {
     }
 
     _onWindowCreated(window) {
+        if (this._window && this.visible && this._window.above)
+            this._watchClipboard(window);
         if (this._window || !this._client?.ownsWindow(window))
             return;
         this._attach(window);
@@ -278,11 +288,71 @@ export class QuickTerminal {
     }
 
     _onFocusChanged() {
+        this._cancelFocusCheck();
         if (!this.visible || !this._config.autohide)
             return;
         const focus = global.display.focus_window;
         if (!focus || focus === this._window || focus.get_transient_for() === this._window)
             return;
-        this.hide();
+        if (!looksLikeWlClipboard(focus)) {
+            this.hide();
+            return;
+        }
+        // A clipboard tool borrowing focus for an instant is not the user
+        // leaving. Confirm before deciding, and let a newer focus change win.
+        const check = new Gio.Cancellable();
+        this._focusCheck = check;
+        isWlClipboard(focus, check).then(clipboard => {
+            if (this._focusCheck !== check)
+                return;
+            this._focusCheck = null;
+            if (!clipboard && this.visible)
+                this.hide();
+        }).catch(e => {
+            if (!(e instanceof GLib.Error && e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)))
+                console.warn(`Ghostty Quick Terminal: focus check failed: ${e.message}`);
+        });
+    }
+
+    _cancelFocusCheck() {
+        this._focusCheck?.cancel();
+        this._focusCheck = null;
+    }
+
+    // While the terminal is above, a wl-clipboard surface can map without
+    // ever receiving focus, and wl-copy then hangs. Hand it the focus.
+    _watchClipboard(window) {
+        const watch = {ids: [], cancellable: null};
+        const check = () => {
+            if (watch.cancellable || !looksLikeWlClipboard(window))
+                return;
+            watch.cancellable = new Gio.Cancellable();
+            isWlClipboard(window, watch.cancellable).then(clipboard => {
+                this._unwatchClipboard(window);
+                if (clipboard && !window.is_hidden())
+                    window.focus(global.get_current_time());
+            }).catch(() => {});
+        };
+        watch.ids.push(window.connect('notify::title', check));
+        // Once shown under any other title it is an ordinary window.
+        watch.ids.push(window.connect('shown', () => {
+            if (looksLikeWlClipboard(window))
+                check();
+            else if (!watch.cancellable)
+                this._unwatchClipboard(window);
+        }));
+        watch.ids.push(window.connect('unmanaged', () => this._unwatchClipboard(window)));
+        this._clipboardWatch.set(window, watch);
+        check();
+    }
+
+    _unwatchClipboard(window) {
+        const watch = this._clipboardWatch.get(window);
+        if (!watch)
+            return;
+        watch.cancellable?.cancel();
+        for (const id of watch.ids)
+            window.disconnect(id);
+        this._clipboardWatch.delete(window);
     }
 }

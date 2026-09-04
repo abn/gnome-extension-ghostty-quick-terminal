@@ -17,3 +17,5 @@ elsewhere.
 - Rewrote the overview to reflect the first working version.
 - Added the releasing guide covering the GitHub workflows and the upload
   to extensions.gnome.org.
+- Documented the clipboard-tool exception to autohide on the approach page
+  and the components table.

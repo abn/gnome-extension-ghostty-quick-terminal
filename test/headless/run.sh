@@ -69,6 +69,15 @@ for _ in $(seq 1 30); do
 done
 step 'shell is up'
 
+# The headless seat has no keyboard, and wl-copy needs one to take focus.
+# A RemoteDesktop session with a virtual keyboard gives the seat one.
+python3 "$root/test/headless/virtual-keyboard.py" > "$sandbox/keyboard.log" 2>&1 &
+keyboard_pid=$!
+trap 'kill $keyboard_pid $shell_pid 2>/dev/null; wait $keyboard_pid $shell_pid 2>/dev/null' EXIT
+sleep 2
+grep -q 'virtual keyboard ready' "$sandbox/keyboard.log" || fail 'virtual keyboard did not come up (see build/headless/keyboard.log)'
+step 'virtual keyboard attached'
+
 gnome-extensions enable "$uuid"
 sleep 1
 [[ -f "$sandbox/config/dconf/user" ]] || fail 'sandbox dconf database missing: writes may be leaking to the real profile'
@@ -129,6 +138,29 @@ assert r[0] == 0 and r[2] == 1280, r
 assert r[1] + r[3] == 800, r
 print('headless: config change moved the terminal to', r)
 PY2
+
+# Autohide: a clipboard tool borrowing focus must not hide the terminal,
+# and must not hang for lack of focus while the terminal is above.
+printf 'quick-terminal-position = top\nquick-terminal-autohide = true\n' > "$sandbox/config/ghostty/config"
+sleep 2
+ext_call Show >/dev/null
+sleep 2
+if ! printf 'clipboard' | timeout 5 wl-copy; then fail 'wl-copy hung or failed while the terminal was above'; fi
+sleep 1
+minimized=$(ev 'JSON.stringify(global.get_window_actors().map(a=>a.meta_window).filter(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(w=>w.minimized))')
+[[ "$minimized" == "[false]" ]] || fail "wl-copy hid the terminal: $minimized"
+[[ "$(timeout 5 wl-paste -n)" == "clipboard" ]] || fail 'clipboard content did not round-trip'
+step 'wl-copy left the terminal alone'
+
+# Autohide still hides for a real window.
+ghostty --gtk-single-instance=false --class=is.abn.Bystander > /dev/null 2>&1 &
+bystander=$!
+sleep 4
+minimized=$(ev 'JSON.stringify(global.get_window_actors().map(a=>a.meta_window).filter(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(w=>w.minimized))')
+kill $bystander 2>/dev/null
+[[ "$minimized" == "[true]" ]] || fail "another window taking focus did not hide the terminal: $minimized"
+sleep 1
+step 'autohide still works for other windows'
 
 # A missing Ghostty must be logged, not thrown. End the running terminal
 # first so the next toggle has to launch.

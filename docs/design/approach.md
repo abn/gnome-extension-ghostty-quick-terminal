@@ -50,6 +50,14 @@ With `quick-terminal-autohide` on, the extension listens for focus changes
 while the terminal is visible and hides it when focus moves to a window that
 is neither the terminal nor one of its transients.
 
+Clipboard tools are the exception. `wl-copy` and `wl-paste` map a surface
+titled `wl-clipboard` to obtain a serial, take focus for an instant, and
+unmap. When focus lands on such a window the extension reads the process
+command line before deciding, and leaves the terminal in place if it is one
+of those tools. A window kept above can also starve that surface of focus,
+which leaves `wl-copy` hanging, so while the terminal is visible and above
+the extension focuses `wl-clipboard` surfaces as they appear.
+
 ## Lock and disable
 
 Disabling the extension normally ends the Ghostty process. When the shell

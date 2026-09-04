@@ -19,7 +19,7 @@ Changes are picked up when the file is saved.
 | Key | Values | Effect |
 |-----|--------|--------|
 | `quick-terminal-position` | `top`, `bottom`, `left`, `right`, `center` | Which edge the terminal slides in from |
-| `quick-terminal-autohide` | `true`, `false` | Hide when focus moves elsewhere |
+| `quick-terminal-autohide` | `true`, `false` | Hide when focus moves elsewhere. Clipboard tools such as `wl-copy` do not count |
 | `quick-terminal-animation-duration` | seconds, `0` disables | Slide duration |
 | `quick-terminal-screen` | `mouse` for the monitor under the pointer, anything else for the primary monitor | Which monitor |
 

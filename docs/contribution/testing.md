@@ -27,7 +27,9 @@ with its own config, data and cache directories so nothing touches your
 session. It installs the built extension there, enables it, calls the D-Bus
 `Toggle` method, checks that a Ghostty window owned by the extension sits at
 the expected rectangle, hides and shows it again, changes the Ghostty config
-and checks the terminal moved, points the command at a missing binary and
+and checks the terminal moved, turns autohide on and checks that `wl-copy`
+completes without hiding the terminal while another window does hide it,
+points the command at a missing binary and
 checks the failure is logged rather than thrown, and finally disables the
 extension and checks the terminal went with it. A screenshot lands under
 `build/headless/`.
@@ -36,8 +38,10 @@ The private environment is exported before the session bus starts. That
 matters: services the bus activates, dconf above all, inherit it, and
 without it sandbox writes would land in your real profile.
 
-The harness needs `dbus-run-session`, a GPU render node and Ghostty on the
-path. It runs the shell with `--unsafe-mode` so the test can evaluate
+The harness needs `dbus-run-session`, a GPU render node, Ghostty and
+`wl-clipboard` on the path. The headless seat has no keyboard, so the harness
+opens a Mutter RemoteDesktop session with a virtual keyboard for the run;
+without one `wl-copy` cannot take focus. It runs the shell with `--unsafe-mode` so the test can evaluate
 JavaScript inside it; that flag is never used for the real session.
 
 ## Manual check in your session
