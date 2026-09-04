@@ -1,44 +1,56 @@
 ---
 type: Guide
 title: Releasing
-description: How a tagged release is checked, packed, published on GitHub and uploaded to extensions.gnome.org.
+description: How Release Please cuts a release from conventional commits, and how the package reaches GitHub and extensions.gnome.org.
 status: draft
 ---
 
 # Releasing
 
-Releases are driven by tags. Pushing `vX.Y.Z` runs the release workflow,
-which checks, packs, publishes a GitHub release and, after a human
-approves, uploads the package to extensions.gnome.org with the
-`gnome-extensions upload` command that ships with GNOME Shell 49 and later.
+Releases are cut by Release Please from the commit history. Nobody edits a
+version or writes a changelog by hand.
 
-## Before tagging
+## The flow
 
-1. Set `version-name` in `src/metadata.json` to `X.Y.Z`. The tag must be
-   `vX.Y.Z`; `make release/check TAG=vX.Y.Z` verifies the match.
-2. Never add a `version` field. extensions.gnome.org assigns it, and a
-   shipped value makes GNOME Shell upgrade or downgrade the extension on its
-   own. `make check` refuses a metadata file that carries one.
-3. Keep `shell-version` to stable releases plus at most one development
-   release.
-4. Run `make check` and `make test/headless` locally. The headless harness
-   needs a GPU render node, so it does not run in CI.
+1. Commits on `main` follow Conventional Commits; the commit-msg hook
+   enforces it. `feat` and `fix` commits appear in the changelog and drive
+   the version, `feat` bumping the minor and `fix` the patch while the
+   project is below 1.0.
+2. On every push to `main`, Release Please opens or updates a pull request
+   titled `chore(main): release X.Y.Z`. It bumps `version-name` in
+   `src/metadata.json`, updates `CHANGELOG.md` and the manifest.
+3. Merging that pull request creates the tag `vX.Y.Z` and the GitHub
+   release with generated notes.
+4. The same workflow run then calls the release workflow: it checks out
+   the tag, runs `make check`, verifies the tag against `version-name`,
+   packs the extension, attaches the zip to the GitHub release, and waits
+   for approval on the `extensions.gnome.org` environment before uploading
+   with the `gnome-extensions upload` command that ships with GNOME Shell
+   49 and later.
 
-## Tagging
+Calling the release workflow from the Release Please run is deliberate. A
+tag created with the workflow token does not trigger other workflows, so
+the alternative would be a personal access token in the repository.
 
-```sh
-git tag -a v0.1.0 -m 'v0.1.0'
-git push origin v0.1.0
-```
+## Files Release Please owns
 
-## What the workflow does
+- `.release-please-manifest.json`: the last released version. It starts at
+  `0.0.0` so the first release is `0.1.0`, the `version-name` the metadata
+  already carries.
+- `release-please-config.json`: the strategy and the extra file to bump,
+  which is `version-name` in `src/metadata.json`.
+- `CHANGELOG.md` and `version.txt`: written by the release pull request.
 
-- Job `pack`: installs the toolchain in a Fedora 44 container (GNOME Shell
-  50), runs `make check`, verifies the tag, packs the extension, keeps the
-  zip as a workflow artifact and creates a GitHub release with it.
-- Job `publish`: waits for approval on the `extensions.gnome.org`
-  environment, then uploads the zip with the account in the environment
-  secrets.
+Never add a `version` field to `src/metadata.json`. extensions.gnome.org
+assigns it, and a shipped value makes GNOME Shell upgrade or downgrade the
+extension on its own. `make check` refuses a metadata file that carries one.
+
+## Before merging a release pull request
+
+- `make check` and `make test/headless` pass locally on `main`. The
+  headless harness needs a GPU render node, so it does not run in CI.
+- `shell-version` lists stable releases plus at most one development
+  release.
 
 ## One-time repository setup
 
@@ -48,8 +60,8 @@ git push origin v0.1.0
 2. Add `EGO_USERNAME` and `EGO_PASSWORD` as secrets on that environment.
    Use a dedicated account if you can; the password is used as is by the
    upload command.
-3. Point `url` in `src/metadata.json` at the repository so reviewers and
-   users can find it.
+3. Allow GitHub Actions to create pull requests, under Settings, Actions,
+   General, Workflow permissions. Release Please needs it.
 
 ## After uploading
 

@@ -20,9 +20,10 @@ Read the output, do not trust the claim.
 
 ## Releasing
 
-Tag `vX.Y.Z` after setting `version-name`. The workflow packs, publishes
-the GitHub release and waits for your approval before uploading to
-extensions.gnome.org. See [Releasing](releasing.md).
+Merge the release pull request Release Please keeps open. That creates
+the tag and the GitHub release, packs the extension, and waits for your
+approval before uploading to extensions.gnome.org. See
+[Releasing](releasing.md).
 
 ## Docs
 

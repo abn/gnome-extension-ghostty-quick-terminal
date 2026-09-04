@@ -1,15 +1,19 @@
 name: Release
 
 on:
-  push:
-    tags: ['v*']
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag, vX.Y.Z, created by Release Please
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
   pack:
-    name: Pack and publish a GitHub release
+    name: Pack and attach to the GitHub release
     runs-on: ubuntu-latest
     container: registry.fedoraproject.org/fedora:44
     steps:
@@ -18,12 +22,14 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False
           git make gjs glib2 gnome-shell nodejs ShellCheck gh
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
       - name: Trust the checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Check
         run: make check
       - name: Tag must match version-name
-        run: make release/check TAG="${GITHUB_REF_NAME}"
+        run: make release/check TAG="${{ inputs.tag }}"
       - name: Pack
         run: make build
       - name: Keep the package
@@ -32,12 +38,10 @@ jobs:
           name: extension
           path: dist/*.shell-extension.zip
           if-no-files-found: error
-      - name: GitHub release
+      - name: Attach to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "$GITHUB_REF_NAME" dist/*.shell-extension.zip
-          --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release upload "${{ inputs.tag }}" dist/*.shell-extension.zip --clobber
 
   publish:
     name: Upload to extensions.gnome.org
