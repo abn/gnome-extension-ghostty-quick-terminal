@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Runs the repository check target before every commit.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+make check

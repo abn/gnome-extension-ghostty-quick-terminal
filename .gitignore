@@ -1,0 +1,19 @@
+# Local scratch area: notes, drafts, task breakdowns. Never committed.
+.scratch/
+
+# Generated tool shims (written by .agents/bootstrap.sh)
+CLAUDE.md
+
+# Build output and local state
+build/
+dist/
+*.zip
+schemas/gschemas.compiled
+node_modules/
+
+# Editor and OS droppings
+.DS_Store
+*~
+*.swp
+.idea/
+.vscode/
