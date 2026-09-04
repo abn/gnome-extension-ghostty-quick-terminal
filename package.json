@@ -9,8 +9,8 @@
     "fmt": "eslint . --fix"
   },
   "devDependencies": {
-    "@eslint/config-helpers": "^0.3.0",
-    "eslint": "^9.0.0",
+    "@eslint/config-helpers": "^0.7.0",
+    "eslint": "^10.9.1",
     "eslint-config-gnome": "git+https://gitlab.gnome.org/World/javascript/eslint-config-gnome.git#c479d059e8d9ea99c3b53c2ea43abf7fdb05eb51"
   }
 }
