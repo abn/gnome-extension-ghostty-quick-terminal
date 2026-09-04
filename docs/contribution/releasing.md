@@ -34,9 +34,10 @@ the alternative would be a personal access token in the repository.
 
 ## Files Release Please owns
 
-- `.release-please-manifest.json`: the last released version. It starts at
-  `0.0.0` so the first release is `0.1.0`, the `version-name` the metadata
-  already carries.
+- `.release-please-manifest.json`: the last released version. Until a tag
+  exists Release Please treats the project as unreleased and uses
+  `initial-version` from the config, `0.1.0`, which is the `version-name`
+  the metadata already carries.
 - `release-please-config.json`: the strategy and the extra file to bump,
   which is `version-name` in `src/metadata.json`.
 - `CHANGELOG.md` and `version.txt`: written by the release pull request.
