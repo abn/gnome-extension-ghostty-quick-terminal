@@ -21,7 +21,7 @@ jobs:
         run: >-
           dnf install -y --setopt=install_weak_deps=False
           git make gjs glib2 gnome-shell nodejs nodejs-npm ShellCheck gh
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag }}
       - name: Trust the checkout
@@ -33,7 +33,7 @@ jobs:
       - name: Pack
         run: make build
       - name: Keep the package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: extension
           path: dist/*.shell-extension.zip
@@ -57,7 +57,7 @@ jobs:
     steps:
       - name: Install gnome-extensions
         run: dnf install -y --setopt=install_weak_deps=False gnome-shell
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: extension
           path: dist
