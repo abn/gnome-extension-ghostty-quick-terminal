@@ -13,6 +13,6 @@ chmod +x .agents/hooks/* .agents/scripts/*.sh
 # Tool shim: only points at AGENTS.md. Listed in .gitignore.
 printf 'Read AGENTS.md and follow it.\n' > CLAUDE.md
 
-mkdir -p .scratch/inbox .scratch/outbox .scratch/tasks .scratch/assets
+mkdir -p .agents/brain/inbox .agents/brain/outbox .agents/brain/tasks .agents/brain/assets
 
-printf 'bootstrap: hooks installed, shims written, scratch area ready\n'
+printf 'bootstrap: hooks installed, shims written, working area ready\n'

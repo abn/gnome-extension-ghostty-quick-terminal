@@ -10,8 +10,8 @@ Ghostty on GNOME with Mutter and Wayland. The goal is a working, elegant,
 low-footprint and maintainable extension. The design lives in
 `docs/design/`, the component breakdown in `docs/architecture/`, and
 decisions in `docs/adr/`.
-Working notes, drafts and task breakdowns live in `.scratch/`, which is local
-only and never committed.
+Working notes, drafts and task breakdowns live in `.agents/brain/`, which is
+local only and never committed.
 
 ## Invariants
 

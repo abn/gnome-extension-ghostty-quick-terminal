@@ -1,5 +1,5 @@
-# Local scratch area: notes, drafts, task breakdowns. Never committed.
-.scratch/
+# Local working area: notes, drafts, task breakdowns. Never committed.
+.agents/brain/
 
 # Generated tool shims (written by .agents/bootstrap.sh)
 CLAUDE.md
