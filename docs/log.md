@@ -23,3 +23,8 @@ elsewhere.
 - Noted the ESLint tooling in the contributing guide.
 - Documented the shipped override file and Ghostty's config-file load order
   on the approach page and the components table.
+
+## 2026-09-08
+
+- Rewrote the setup and workflow steps in the contributing guide now that
+  pre-commit owns the git hooks and the quality gates.

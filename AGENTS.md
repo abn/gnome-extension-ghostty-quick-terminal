@@ -29,12 +29,14 @@ local only and never committed.
 
 ## Automation and conventions
 
-- `make` is the single automation entrypoint. `make check` is what hooks and
-  CI run. `make setup` runs `.agents/bootstrap.sh`, which installs hooks and
-  generates git-excluded tool shims.
+- `make` is the single automation entrypoint. `make check` is what CI runs.
+  `make setup` runs `.agents/bootstrap.sh`, which installs the pre-commit
+  hooks and generates git-excluded tool shims.
+- Quality gates are declared in `.pre-commit-config.yaml`, not in bespoke
+  scripts. Reach for an existing hook before writing one.
 - Commit messages follow Conventional Commits: summary first, under 50
   characters where practical, 72 as the hard limit, no trailers, no emoji.
-  The `commit-msg` hook rejects anything else.
+  gitlint rejects anything else on `commit-msg`.
 - Stage explicit paths. Never `git add -A`.
 - Prefer fixing up or amending the owning commit on an active branch over
   stacking fix commits.

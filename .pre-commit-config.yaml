@@ -1,0 +1,112 @@
+# Every quality gate the repository has. `make check` runs this across the
+# whole tree; the installed git hooks run it on what is staged.
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        stages: [pre-commit]
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+        stages: [pre-commit]
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-added-large-files
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+
+  # Editorial and privacy invariants, as byte patterns so this file does not
+  # trip its own hooks.
+  - repo: local
+    hooks:
+      - id: no-em-dash
+        name: no em-dash
+        language: pygrep
+        entry: '\xe2\x80\x94'
+        types: [text]
+
+      - id: no-emoji
+        name: no emoji in commit messages
+        language: pygrep
+        entry: '\xf0\x9f|\xe2[\x98-\x9e\xac-\xaf]'
+        stages: [commit-msg]
+
+      - id: no-trailers
+        name: no commit message trailers
+        language: pygrep
+        args: [--multiline]
+        entry: '\A.*\n[A-Za-z][A-Za-z-]+: .+'
+        stages: [commit-msg]
+
+      - id: no-absolute-user-path
+        name: no absolute user paths
+        language: pygrep
+        entry: '/home/[a-z]|/Users/[A-Za-z]'
+        types: [text]
+
+      - id: no-file-uri
+        name: no local file URI scheme
+        language: pygrep
+        entry: 'file:[/]{2}'
+        types: [text]
+
+      - id: no-secret-literal
+        name: no secret literals
+        language: pygrep
+        args: [--ignore-case]
+        entry: '(api[_-]?key|secret|token)[=:] *[A-Za-z0-9_-]{16,}'
+        types: [text]
+
+  # Project-specific gates. They go through make so the targets stay the
+  # single entrypoint and keep their own prerequisites.
+  - repo: local
+    hooks:
+      - id: docs-check
+        name: docs wiki is a valid OKF v0.2 bundle
+        entry: make docs/check
+        language: system
+        pass_filenames: false
+        files: ^docs/
+
+      - id: js-check
+        name: eslint with GNOME Shell rules
+        entry: make js/check
+        language: system
+        pass_filenames: false
+        types_or: [javascript, json]
+        files: ^(src|tests|eslint\.config\.js|package(-lock)?\.json)
+
+      - id: schema-check
+        name: gsettings schema compiles
+        entry: make schema/check
+        language: system
+        pass_filenames: false
+        files: ^src/schemas/
+
+      - id: metadata-check
+        name: metadata.json is fit for extensions.gnome.org
+        entry: make metadata/check
+        language: system
+        pass_filenames: false
+        files: ^src/metadata\.json$
+
+      - id: unit-tests
+        name: unit tests
+        entry: make test
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

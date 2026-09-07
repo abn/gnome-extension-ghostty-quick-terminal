@@ -7,7 +7,7 @@ JS     := $(shell find src tests -name '*.js')
 
 ESLINT := node_modules/.bin/eslint
 
-.PHONY: setup build install uninstall check fmt lint test clean docs/check shell/check js/check schema/check metadata/check release/check test/headless help
+.PHONY: setup build install uninstall check fmt lint test clean docs/check js/check schema/check metadata/check release/check test/headless help
 
 ##@ Bootstrap
 
@@ -34,7 +34,10 @@ check: lint test ## Run every quality gate (used by hooks and CI)
 fmt: $(ESLINT) ## Fix what ESLint can fix
 	$(ESLINT) . --fix
 
-lint: docs/check shell/check js/check schema/check metadata/check ## Lint docs, scripts, JS, schema and metadata
+# pre-commit owns file hygiene, shellcheck and the editorial invariants, and
+# calls the project gates below. Same set the installed git hooks run.
+lint: ## Run every pre-commit hook across the tree
+	pre-commit run --all-files --show-diff-on-failure
 
 test: ## Run unit tests for the pure modules
 	gjs -m tests/run.js
@@ -47,7 +50,7 @@ clean: ## Remove build artifacts
 
 ##@ Utilities
 
-docs/check: ## Validate the docs wiki (OKF v0.2 and privacy hygiene)
+docs/check: ## Validate the docs wiki as an OKF v0.2 bundle
 	@./.agents/scripts/docs-check.sh docs
 
 # GNOME Shell's own ESLint rules, as the review guidelines recommend.
@@ -72,12 +75,6 @@ release/check: ## Check that TAG matches version-name in metadata.json
 
 schema/check: ## Validate the GSettings schema
 	@glib-compile-schemas --strict --dry-run src/schemas && printf 'schema/check: ok\n'
-
-# shellcheck is optional locally; CI should install it.
-shell/check: ## Lint shell scripts with shellcheck when available
-	@if command -v shellcheck >/dev/null 2>&1; then \
-	  shellcheck .agents/bootstrap.sh .agents/hooks/* .agents/scripts/*.sh test/headless/*.sh; \
-	else printf 'shell/check: shellcheck not installed, skipping\n'; fi
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} \

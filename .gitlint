@@ -1,0 +1,15 @@
+# Commit message rules. The conventional-commit prefix, the length limits
+# and the fixup exemption all used to live in a hand-written commit-msg hook.
+[general]
+contrib=contrib-title-conventional-commits
+ignore=body-is-missing
+regex-style-search=true
+
+[title-max-length]
+line-length=72
+
+[body-max-line-length]
+line-length=72
+
+[contrib-title-conventional-commits]
+types=feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert

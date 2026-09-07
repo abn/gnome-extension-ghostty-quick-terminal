@@ -9,8 +9,9 @@ status: draft
 
 ## Setup
 
-Run the bootstrap once after cloning. It installs the git hooks and
-generates local tool shims.
+Run the bootstrap once after cloning. It installs the pre-commit hooks and
+generates local tool shims. It needs [pre-commit](https://pre-commit.com) on
+the path.
 
 ```sh
 make setup
@@ -27,7 +28,8 @@ tooling never ships in the extension.
 2. Create a worktree with a conventional branch name (`feat/`, `fix/`,
    `docs/`, `chore/`, `refactor/`), rebased on the latest `main`.
 3. Implement the change together with its tests and docs.
-4. Run `make check`. The pre-commit hook runs it too.
+4. Run `make check`. The installed hooks run the same gates: the linters on
+   commit, the commit message rules on `commit-msg`, the unit tests on push.
 5. Commit in logical units with Conventional Commits messages.
 6. Get a reviewer pass before pushing.
 
