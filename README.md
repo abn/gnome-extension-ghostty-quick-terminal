@@ -70,7 +70,9 @@ ends the terminal, except when the screen locks, where the process is kept
 so a running job survives the lock.
 
 The design and its alternatives, including why Ghostty's wasm build and
-libghostty were not used, are recorded in [docs/adr](docs/adr/index.md).
+libghostty were not used, are recorded in [docs/adr](docs/adr/index.md), and
+written up at length in [A drop-down Ghostty on
+GNOME](https://abn.is/void/a-drop-down-ghostty-on-gnome/).
 
 ## Develop
 
