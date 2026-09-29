@@ -5,6 +5,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
@@ -28,6 +29,7 @@ export class QuickTerminal {
         this._unmanagedId = 0;
         this._mapId = 0;
         this._focusCheck = null;
+        this._returnFocus = null;
         this._clipboardWatch = new Map();
         this._windowCreatedId = global.display.connect('window-created',
             (display, window) => this._onWindowCreated(window));
@@ -72,7 +74,7 @@ export class QuickTerminal {
             const window = actor.meta_window;
             if (window !== closing && this._client.ownsWindow(window)) {
                 this._attach(window);
-                this._state = window.minimized ? 'hidden' : 'visible';
+                this._state = actor.visible ? 'visible' : 'hidden';
                 return;
             }
         }
@@ -117,10 +119,12 @@ export class QuickTerminal {
         const actor = this._actor;
         this._place();
         actor.remove_all_transitions();
-        if (window.minimized) {
-            Main.wm.skipNextEffect(actor);
-            window.unminimize();
-        }
+        // Focus goes back here on the next hide unless it moves on its own
+        // first, as it does under autohide.
+        const focus = global.display.focus_window;
+        if (focus && focus !== window)
+            this._returnFocus = focus;
+        actor.show();
         Main.activateWindow(window);
         if (!this.visible)
             this._setActorState(hiddenState(this._config.position, this._target));
@@ -136,16 +140,43 @@ export class QuickTerminal {
         const actor = this._actor;
         this._state = 'hiding';
         actor.remove_all_transitions();
-        this._ease(hiddenState(this._config.position, this._target), Clutter.AnimationMode.EASE_IN_QUAD, () => {
-            Main.wm.skipNextEffect(actor);
-            // Mutter refuses to minimize a window hidden from the window
-            // list, so lift that for the duration of the call.
-            window.show_in_window_list();
-            window.minimize();
-            window.hide_from_window_list();
-            this._setActorState({x: 0, y: 0, opacity: 255});
-            this._state = 'hidden';
-        });
+        this._ease(hiddenState(this._config.position, this._target), Clutter.AnimationMode.EASE_IN_QUAD,
+            () => this._completeHide(window, actor));
+    }
+
+    // Finishes a hide after the slide. The window can go away mid-slide, so
+    // the actor is only touched while it is still ours. Hiding the actor
+    // instead of minimising leaves skip-taskbar untouched, which is the
+    // property the overview rebuilds its window list on; Mutter refuses to
+    // minimise a skip-taskbar window anyway. See ADR 0004.
+    _completeHide(window, actor) {
+        if (this._window !== window || this._state !== 'hiding')
+            return;
+        actor.hide();
+        this._state = 'hidden';
+        this._restoreFocus();
+    }
+
+    // Hands focus back to the window that had it before the terminal was
+    // shown, or the most recent other window if that one is gone. Autohide
+    // moves focus on its own, in that case it stays put. The terminal is
+    // never left focused while hidden, so with nothing else around focus is
+    // cleared and keys reach the shell.
+    _restoreFocus() {
+        const previous = this._returnFocus;
+        this._returnFocus = null;
+        const focus = global.display.focus_window;
+        if (focus && focus !== this._window)
+            return;
+        const actors = global.get_window_actors();
+        const alive = window => window && actors.some(a => a.meta_window === window);
+        const target = alive(previous)
+            ? previous
+            : global.display.get_tab_list(Meta.TabList.NORMAL, null).find(w => w !== this._window);
+        if (target)
+            Main.activateWindow(target);
+        else
+            global.display.unset_input_focus(global.get_current_time());
     }
 
     // Releases everything. Returns the client so the caller can decide
@@ -240,6 +271,7 @@ export class QuickTerminal {
         this._window = null;
         this._actor = null;
         this._target = null;
+        this._returnFocus = null;
         this._state = 'hidden';
     }
 

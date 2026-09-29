@@ -68,6 +68,11 @@ fail() {
 }
 step() { printf 'headless: %s\n' "$1"; }
 
+# Hiding is an actor hide now, not a minimise, so assert on actor visibility.
+terminal_shown() {
+  ev 'JSON.stringify(global.get_window_actors().filter(a=>a.meta_window.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(a=>a.visible))'
+}
+
 for _ in $(seq 1 30); do
   sleep 1
   kill -0 $shell_pid 2>/dev/null || fail 'shell exited during startup (see build/headless/shell.log)'
@@ -93,7 +98,7 @@ step 'extension enabled'
 
 ext_call Toggle >/dev/null
 sleep 5
-json=$(ev 'JSON.stringify(global.get_window_actors().map(a=>{const w=a.meta_window;const r=w.get_frame_rect();return {app:w.get_gtk_application_id(),rect:[r.x,r.y,r.width,r.height],above:w.above,sticky:w.is_on_all_workspaces(),skip:w.skip_taskbar,minimized:w.minimized,focus:w.has_focus()}}))')
+json=$(ev 'JSON.stringify(global.get_window_actors().map(a=>{const w=a.meta_window;const r=w.get_frame_rect();return {app:w.get_gtk_application_id(),rect:[r.x,r.y,r.width,r.height],above:w.above,sticky:w.is_on_all_workspaces(),skip:w.skip_taskbar,visible:a.visible,minimized:w.minimized,focus:w.has_focus()}}))')
 printf '%s\n' "$json" > "$sandbox/windows-shown.json"
 python3 - "$json" <<'PY' || fail 'window is not where it should be'
 import json, sys
@@ -104,7 +109,7 @@ w = wins[0]
 assert w['rect'][0] == 0 and w['rect'][2] == 1280, w
 assert 0 < w['rect'][1] <= 40, w
 assert abs(w['rect'][3] - (800 - w['rect'][1]) * 0.4) <= 2, w
-assert w['above'] and w['sticky'] and w['skip'] and not w['minimized'], w
+assert w['visible'] and w['above'] and w['sticky'] and w['skip'] and not w['minimized'], w
 assert w['focus'], w
 print('headless: window placed at', w['rect'])
 PY
@@ -117,21 +122,63 @@ step 'screenshot saved to build/headless/shown.png'
 
 ext_call Toggle >/dev/null
 sleep 2
-minimized=$(ev 'JSON.stringify(global.get_window_actors().map(a=>a.meta_window).filter(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(w=>w.minimized))')
-if [[ "$minimized" != "[true]" ]]; then
-  ev 'JSON.stringify(global.get_window_actors().filter(a=>a.meta_window.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(a=>({ty:a.translation_y,op:a.opacity,transitions:a.get_transition("translation-y")!==null,canMin:a.meta_window.can_minimize(),focus:a.meta_window.has_focus(),minimized:a.meta_window.minimized,hidden:a.meta_window.is_hidden(),animations:imports.gi.St.Settings.get().enable_animations})))' >&2
-  fail "expected the window to be minimized, got $minimized"
+shown=$(terminal_shown)
+if [[ "$shown" != "[false]" ]]; then
+  ev 'JSON.stringify(global.get_window_actors().filter(a=>a.meta_window.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(a=>({ty:a.translation_y,op:a.opacity,visible:a.visible,transitions:a.get_transition("translation-y")!==null,focus:a.meta_window.has_focus(),minimized:a.meta_window.minimized,hidden:a.meta_window.is_hidden(),animations:imports.gi.St.Settings.get().enable_animations})))' >&2
+  fail "expected the window actor to be hidden, got $shown"
 fi
 visible=$(gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/GhosttyQuickTerminal \
   --method org.freedesktop.DBus.Properties.Get is.abn.GhosttyQuickTerminal Visible)
 [[ "$visible" == "(<false>,)" ]] || fail "Visible property is $visible after hide"
+focused=$(ev 'global.display.focus_window ? global.display.focus_window.get_gtk_application_id() : null')
+[[ "$focused" != "is.abn.GhosttyQuickTerminal" ]] || fail 'the hidden terminal kept keyboard focus'
 step 'hidden again'
 
 ext_call Show >/dev/null
 sleep 2
-minimized=$(ev 'JSON.stringify(global.get_window_actors().map(a=>a.meta_window).filter(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(w=>w.minimized))')
-[[ "$minimized" == "[false]" ]] || fail "expected the window to be shown again, got $minimized"
+shown=$(terminal_shown)
+[[ "$shown" == "[true]" ]] || fail "expected the window actor to be shown again, got $shown"
 step 'shown again'
+
+# The overview rebuilds its window list when skip-taskbar flips. That flip is
+# gone now, so toggling around an overview visit must leave the shell's
+# window-list code quiet and the terminal out of the list.
+ev 'Main.overview.show(); "overview shown"' >/dev/null
+sleep 1
+overview=$(ev 'JSON.stringify(Main.overview._overview.controls._workspacesDisplay._workspacesViews.flatMap(v=>(v._workspaces??[]).flatMap(w=>w._windows.map(c=>c.metaWindow.get_gtk_application_id()))))')
+[[ "$overview" != *GhosttyQuickTerminal* ]] || fail "terminal is in the overview window list: $overview"
+for _ in 1 2 3 4 5 6; do
+  ext_call Toggle >/dev/null
+  sleep 1
+done
+ev 'Main.overview.hide(); "overview hidden"' >/dev/null
+sleep 2
+for _ in 1 2 3 4 5 6; do
+  ext_call Toggle >/dev/null
+  sleep 1
+done
+overview=$(ev 'JSON.stringify(Main.overview._overview.controls._workspacesDisplay._workspacesViews.flatMap(v=>(v._workspaces??[]).flatMap(w=>w._windows.map(c=>c.metaWindow.get_gtk_application_id()))))')
+[[ "$overview" != *GhosttyQuickTerminal* ]] || fail "terminal appeared in the overview window list: $overview"
+if grep -qE 'addWindow|layout_manager is null|already disposed' "$sandbox/shell.log"; then
+  grep -E 'addWindow|layout_manager is null|already disposed' "$sandbox/shell.log" | head -10 >&2
+  fail 'window-list errors while toggling around the overview'
+fi
+step 'toggling around the overview is clean'
+
+# Focus returns to the window that had it before the terminal was shown.
+ghostty --gtk-single-instance=false --class=is.abn.Bystander > /dev/null 2>&1 &
+bystander=$!
+sleep 4
+ev 'Main.activateWindow(global.get_window_actors().map(a=>a.meta_window).find(w=>w.get_gtk_application_id()==="is.abn.Bystander")); "bystander focused"' >/dev/null
+sleep 1
+ext_call Show >/dev/null
+sleep 2
+ext_call Hide >/dev/null
+sleep 2
+focused=$(ev 'global.display.focus_window ? global.display.focus_window.get_gtk_application_id() : null')
+kill $bystander 2>/dev/null
+[[ "$focused" == "is.abn.Bystander" ]] || fail "focus did not return to the previous window, got $focused"
+step 'focus returns to the previous window'
 
 # Shared config: a change in the Ghostty config moves the terminal.
 printf 'quick-terminal-position = bottom\n' > "$sandbox/config/ghostty/config"
@@ -153,8 +200,8 @@ ext_call Show >/dev/null
 sleep 2
 if ! printf 'clipboard' | timeout 5 wl-copy; then fail 'wl-copy hung or failed while the terminal was above'; fi
 sleep 1
-minimized=$(ev 'JSON.stringify(global.get_window_actors().map(a=>a.meta_window).filter(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(w=>w.minimized))')
-[[ "$minimized" == "[false]" ]] || fail "wl-copy hid the terminal: $minimized"
+shown=$(terminal_shown)
+[[ "$shown" == "[true]" ]] || fail "wl-copy hid the terminal: $shown"
 [[ "$(timeout 5 wl-paste -n)" == "clipboard" ]] || fail 'clipboard content did not round-trip'
 step 'wl-copy left the terminal alone'
 
@@ -162,9 +209,9 @@ step 'wl-copy left the terminal alone'
 ghostty --gtk-single-instance=false --class=is.abn.Bystander > /dev/null 2>&1 &
 bystander=$!
 sleep 4
-minimized=$(ev 'JSON.stringify(global.get_window_actors().map(a=>a.meta_window).filter(w=>w.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").map(w=>w.minimized))')
+shown=$(terminal_shown)
 kill $bystander 2>/dev/null
-[[ "$minimized" == "[true]" ]] || fail "another window taking focus did not hide the terminal: $minimized"
+[[ "$shown" == "[false]" ]] || fail "another window taking focus did not hide the terminal: $shown"
 sleep 1
 step 'autohide still works for other windows'
 

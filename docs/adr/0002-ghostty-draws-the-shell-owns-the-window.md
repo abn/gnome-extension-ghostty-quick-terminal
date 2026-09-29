@@ -67,7 +67,8 @@ behaviour, visibility and animation. Ghostty owns the terminal.
   Ghostty windows.
 - The window is hidden by minimising it. Ghostty offers no hide action for
   ordinary windows, and a minimised window that is also hidden from the
-  window list stays out of the overview and the switcher.
+  window list stays out of the overview and the switcher. Superseded by
+  [0004](0004-hide-by-hiding-the-actor.md), which hides the actor instead.
 - The Ghostty quick-terminal config keys are honoured where they make sense
   on GNOME. See [0003](0003-ghostty-config-is-the-source-of-truth.md).
 - If libghostty ships a GTK widget, the companion-app option becomes worth a

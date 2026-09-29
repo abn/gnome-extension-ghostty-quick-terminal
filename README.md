@@ -63,8 +63,9 @@ gdbus call --session --dest org.gnome.Shell \
 ## How it works
 
 The extension spawns Ghostty through Mutter's own client API, so it knows
-which window is its own without guessing by class or title. Hiding minimises
-the window; showing unminimises, activates and animates it. Nothing polls,
+which window is its own without guessing by class or title. Hiding hides the
+window actor and hands focus back; showing reveals, activates and animates
+it. Nothing polls,
 and no timer runs while the terminal sits idle. Disabling the extension
 ends the terminal, except when the screen locks, where the process is kept
 so a running job survives the lock.

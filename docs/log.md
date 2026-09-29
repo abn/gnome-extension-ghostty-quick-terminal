@@ -28,3 +28,11 @@ elsewhere.
 
 - Rewrote the setup and workflow steps in the contributing guide now that
   pre-commit owns the git hooks and the quality gates.
+
+## 2026-09-29
+
+- Documented on the approach page that the terminal is hidden by hiding its
+  compositor actor, not by minimising, after a shell crash traced to the
+  skip-taskbar flip that minimising a skip-taskbar window requires.
+- Added decision record 0004, superseding the hidden by minimising
+  consequence in 0002.
