@@ -165,6 +165,54 @@ if grep -qE 'addWindow|layout_manager is null|already disposed' "$sandbox/shell.
 fi
 step 'toggling around the overview is clean'
 
+# The workspace switch animation clones the window actors it finds, and a
+# clone paints its source without the source's own visibility, transform or
+# opacity, so a hidden terminal used to be drawn over the whole transition.
+# Only pixels can tell, so screenshot the slowed down transition and measure
+# the strip the terminal occupies: dark while it is shown and rides along,
+# the bright default wallpaper while it is hidden.
+gsettings set org.gnome.mutter dynamic-workspaces false
+gsettings set org.gnome.desktop.wm.preferences num-workspaces 2
+# Mean luminance of the terminal's strip, well inside it on both axes.
+strip_luminance() {
+  python3 - "$1" <<'PY'
+import sys
+import gi
+gi.require_version('GdkPixbuf', '2.0')
+from gi.repository import GdkPixbuf
+pb = GdkPixbuf.Pixbuf.new_from_file(sys.argv[1])
+px, stride, channels = pb.get_pixels(), pb.get_rowstride(), pb.get_n_channels()
+total = count = 0
+for y in range(80, 300, 4):
+    for x in range(200, 1080, 4):
+        o = y * stride + x * channels
+        total += (px[o] + px[o + 1] + px[o + 2]) / 3
+        count += 1
+print(round(total / count))
+PY
+}
+# Captures the terminal's strip part way through a switch to workspace $1.
+switch_shot() {
+  ev "imports.gi.St.Settings.get().slow_down_factor = 20; global.workspace_manager.get_workspace_by_index($1).activate(global.get_current_time()); 'switching'" >/dev/null
+  gdbus call --session --dest org.gnome.Shell.Screenshot --object-path /org/gnome/Shell/Screenshot \
+    --method org.gnome.Shell.Screenshot.Screenshot false false "$sandbox/switch-$2.png" >/dev/null
+  live=$(ev 'Main.wm._workspaceAnimation._switchData !== null ? "live" : "over"')
+  ev 'imports.gi.St.Settings.get().slow_down_factor = 1; "reset"' >/dev/null
+  sleep 2
+  [[ "$live" == "live" ]] || fail "the $2 switch was over before the screenshot"
+  strip_luminance "$sandbox/switch-$2.png"
+}
+ext_call Show >/dev/null
+sleep 2
+lum=$(switch_shot 1 shown)
+[[ "$lum" -lt 100 ]] || fail "the shown terminal did not ride along the switch: luminance $lum"
+ext_call Hide >/dev/null
+sleep 2
+lum=$(switch_shot 0 hidden)
+[[ "$lum" -gt 100 ]] || fail "the hidden terminal is drawn during a workspace switch: luminance $lum"
+gsettings set org.gnome.mutter dynamic-workspaces true
+step 'the hidden terminal stays out of the workspace switch'
+
 # Focus returns to the window that had it before the terminal was shown.
 ghostty --gtk-single-instance=false --class=is.abn.Bystander > /dev/null 2>&1 &
 bystander=$!

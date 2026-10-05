@@ -53,6 +53,13 @@ moved on, as autohide lets it. Both directions use Clutter transitions on
 the actor, so nothing runs when no animation is in flight. See
 [0004](../adr/0004-hide-by-hiding-the-actor.md).
 
+A hidden actor is also clipped to nothing. The workspace switch animation
+clones the window actors on the monitor, and a clone paints its source with
+the source's visibility, transform and opacity overridden, so without the
+clip the hidden terminal is drawn over every workspace transition. A clip is
+part of the paint and so applies to the clone as well. See
+[0005](../adr/0005-clip-the-hidden-actor.md).
+
 ## Focus
 
 With `quick-terminal-autohide` on, the extension listens for focus changes

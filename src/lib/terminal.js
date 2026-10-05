@@ -75,6 +75,9 @@ export class QuickTerminal {
             if (window !== closing && this._client.ownsWindow(window)) {
                 this._attach(window);
                 this._state = actor.visible ? 'visible' : 'hidden';
+                // Hidden means clipped away as well, see _completeHide.
+                if (this._state === 'hidden')
+                    actor.set_clip(0, 0, 0, 0);
                 return;
             }
         }
@@ -119,6 +122,7 @@ export class QuickTerminal {
         const actor = this._actor;
         this._place();
         actor.remove_all_transitions();
+        actor.remove_clip();
         // Focus goes back here on the next hide unless it moves on its own
         // first, as it does under autohide.
         const focus = global.display.focus_window;
@@ -149,10 +153,17 @@ export class QuickTerminal {
     // instead of minimising leaves skip-taskbar untouched, which is the
     // property the overview rebuilds its window list on; Mutter refuses to
     // minimise a skip-taskbar window anyway. See ADR 0004.
+    //
+    // The workspace switch animation clones every window actor it finds on
+    // the monitor, and a clone paints its source without the source's own
+    // visibility, transform or opacity, so the hidden terminal would be
+    // drawn over the transition. An empty clip is part of the paint, so it
+    // applies to the clone too. See ADR 0005.
     _completeHide(window, actor) {
         if (this._window !== window || this._state !== 'hiding')
             return;
         actor.hide();
+        actor.set_clip(0, 0, 0, 0);
         this._state = 'hidden';
         this._restoreFocus();
     }
@@ -190,6 +201,7 @@ export class QuickTerminal {
             this._unwatchClipboard(window);
         if (this._actor) {
             this._actor.remove_all_transitions();
+            this._actor.remove_clip();
             this._setActorState({x: 0, y: 0, opacity: 255});
         }
         this._detach();

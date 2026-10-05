@@ -36,3 +36,10 @@ elsewhere.
   skip-taskbar flip that minimising a skip-taskbar window requires.
 - Added decision record 0004, superseding the hidden by minimising
   consequence in 0002.
+
+## 2026-10-05
+
+- Documented on the approach page that the hidden actor is clipped to
+  nothing, after the workspace switch animation was found drawing its clone
+  of the hidden terminal over every transition.
+- Added decision record 0005 on clipping the hidden actor.
