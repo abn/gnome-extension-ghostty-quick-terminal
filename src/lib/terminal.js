@@ -8,12 +8,36 @@ import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import {WorkspaceGroup} from 'resource:///org/gnome/shell/ui/workspaceAnimation.js';
 
 import {clampFraction, hiddenState, sameRect, targetRect} from './geometry.js';
 import {DEFAULT_CONFIG} from './ghosttyConfig.js';
 import {isWlClipboard, looksLikeWlClipboard} from './wlclipboard.js';
 
 const FIXUP_LIMIT = 10;
+
+const activeTerminals = new Set();
+let originalShouldShowWindow = null;
+
+function patchWorkspaceAnimation() {
+    if (originalShouldShowWindow)
+        return;
+    originalShouldShowWindow = WorkspaceGroup.prototype._shouldShowWindow;
+    WorkspaceGroup.prototype._shouldShowWindow = function (window) {
+        for (const terminal of activeTerminals) {
+            if (terminal.ownsWindow(window) && !terminal.visible)
+                return false;
+        }
+        return originalShouldShowWindow.call(this, window);
+    };
+}
+
+function unpatchWorkspaceAnimation() {
+    if (!originalShouldShowWindow)
+        return;
+    WorkspaceGroup.prototype._shouldShowWindow = originalShouldShowWindow;
+    originalShouldShowWindow = null;
+}
 
 export class QuickTerminal {
     constructor({settings, launch}) {
@@ -37,6 +61,8 @@ export class QuickTerminal {
             () => this._onFocusChanged());
         this._workareasId = global.display.connect('workareas-changed',
             () => this._place());
+        activeTerminals.add(this);
+        patchWorkspaceAnimation();
     }
 
     get visible() {
@@ -45,6 +71,12 @@ export class QuickTerminal {
 
     get hasWindow() {
         return this._window !== null;
+    }
+
+    ownsWindow(window) {
+        if (!window)
+            return false;
+        return this._window === window || Boolean(this._client?.alive && this._client.ownsWindow(window));
     }
 
     setConfig(config) {
@@ -75,9 +107,6 @@ export class QuickTerminal {
             if (window !== closing && this._client.ownsWindow(window)) {
                 this._attach(window);
                 this._state = actor.visible ? 'visible' : 'hidden';
-                // Hidden means clipped away as well, see _completeHide.
-                if (this._state === 'hidden')
-                    actor.set_clip(0, 0, 0, 0);
                 return;
             }
         }
@@ -122,7 +151,6 @@ export class QuickTerminal {
         const actor = this._actor;
         this._place();
         actor.remove_all_transitions();
-        actor.remove_clip();
         // Focus goes back here on the next hide unless it moves on its own
         // first, as it does under autohide.
         const focus = global.display.focus_window;
@@ -154,16 +182,18 @@ export class QuickTerminal {
     // property the overview rebuilds its window list on; Mutter refuses to
     // minimise a skip-taskbar window anyway. See ADR 0004.
     //
-    // The workspace switch animation clones every window actor it finds on
-    // the monitor, and a clone paints its source without the source's own
-    // visibility, transform or opacity, so the hidden terminal would be
-    // drawn over the transition. An empty clip is part of the paint, so it
-    // applies to the clone too. See ADR 0005.
+    // The workspace switch animation builds clones of windows on all
+    // workspaces. Filtering the hidden terminal out of WorkspaceGroup keeps
+    // Clutter from instantiating a clone, avoiding degenerate 0x0 clips that
+    // corrupt Mutter damage tracking. See ADR 0006.
     _completeHide(window, actor) {
         if (this._window !== window || this._state !== 'hiding')
             return;
-        actor.hide();
-        actor.set_clip(0, 0, 0, 0);
+        try {
+            actor.hide();
+        } catch {
+            // The actor can be disposed if the window closed mid-slide.
+        }
         this._state = 'hidden';
         this._restoreFocus();
     }
@@ -200,15 +230,21 @@ export class QuickTerminal {
         for (const window of [...this._clipboardWatch.keys()])
             this._unwatchClipboard(window);
         if (this._actor) {
-            this._actor.remove_all_transitions();
-            this._actor.remove_clip();
-            this._setActorState({x: 0, y: 0, opacity: 255});
+            try {
+                this._actor.remove_all_transitions();
+                this._setActorState({x: 0, y: 0, opacity: 255});
+            } catch {
+                // The actor can already be disposed.
+            }
         }
         this._detach();
         const client = this._client;
         if (client)
             client.onExit = null;
         this._client = null;
+        activeTerminals.delete(this);
+        if (activeTerminals.size === 0)
+            unpatchWorkspaceAnimation();
         return client;
     }
 

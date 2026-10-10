@@ -43,3 +43,12 @@ elsewhere.
   nothing, after the workspace switch animation was found drawing its clone
   of the hidden terminal over every transition.
 - Added decision record 0005 on clipping the hidden actor.
+
+## 2026-10-11
+
+- Documented on the approach page that the hidden terminal is filtered out of
+  WorkspaceGroup rather than clipped, after degenerate 0x0 clipping was traced
+  to NaN transforms, clutter_actor_allocate failures, and Mutter damage
+  tracking breakdowns causing visual ghosting.
+- Added decision record 0006 on filtering the hidden terminal from workspace
+  animations, superseding 0005.

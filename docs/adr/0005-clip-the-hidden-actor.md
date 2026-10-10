@@ -2,10 +2,12 @@
 type: Decision
 title: Clip the hidden actor to nothing
 description: Why the hidden terminal is clipped away as well as hidden, so the workspace switch animation cannot draw it.
-status: accepted
+status: superseded
 ---
 
 # Clip the hidden actor to nothing
+
+> Superseded by [0006](0006-filter-hidden-terminal-from-workspace-animation.md).
 
 ## Context
 

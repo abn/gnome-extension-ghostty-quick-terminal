@@ -53,12 +53,14 @@ moved on, as autohide lets it. Both directions use Clutter transitions on
 the actor, so nothing runs when no animation is in flight. See
 [0004](../adr/0004-hide-by-hiding-the-actor.md).
 
-A hidden actor is also clipped to nothing. The workspace switch animation
-clones the window actors on the monitor, and a clone paints its source with
-the source's visibility, transform and opacity overridden, so without the
-clip the hidden terminal is drawn over every workspace transition. A clip is
-part of the paint and so applies to the clone as well. See
-[0005](../adr/0005-clip-the-hidden-actor.md).
+The workspace switch animation builds clones of window actors on all
+workspaces. Because a clone overrides the source actor's visibility,
+transform and opacity, the hidden terminal would normally be drawn over
+workspace transitions. Degenerate 0x0 clipping causes NaN calculations and
+corrupts Mutter damage tracking. Instead, the extension hooks
+`WorkspaceGroup._shouldShowWindow` to filter the hidden terminal out of
+cloning entirely, while letting it ride along transitions when visible. See
+[0006](../adr/0006-filter-hidden-terminal-from-workspace-animation.md).
 
 ## Focus
 
