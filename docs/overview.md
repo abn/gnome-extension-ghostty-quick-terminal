@@ -30,7 +30,7 @@ so Ghostty can stay a plain application.
 
 ## How
 
-The shell launches a dedicated Ghostty process as a Mutter client and does
+The shell launches a dedicated Ghostty process and does
 the work a layer shell would do: placement, stacking, workspaces, show and
 hide. Ghostty does everything a terminal does, with the user's own config.
 See the [approach](design/approach.md) and the

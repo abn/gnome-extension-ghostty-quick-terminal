@@ -1,9 +1,8 @@
-// Everything that talks to Ghostty: launching it as a Mutter client,
-// reading its config, and watching the config directory.
+// Everything that talks to Ghostty: launching it, reading its config, and
+// watching the config directory.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Meta from 'gi://Meta';
 
 import {parseShowConfig, quickTerminalSettings} from './ghosttyConfig.js';
 
@@ -27,13 +26,14 @@ export function launchArgs(command, overridesPath, extraArgs = []) {
     ];
 }
 
-// A Ghostty process the shell launched. Mutter knows which windows belong
-// to it, so ownership is a fact rather than a guess.
+// A Ghostty process the shell launched. Mutter reports a Wayland client's pid
+// from its socket credentials, so the window belongs to the process spawned
+// here, not to a guess about its title or class.
 export class GhosttyClient {
     constructor(argv) {
         const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.NONE});
-        this._client = Meta.WaylandClient.new_subprocess(global.context, launcher, argv);
-        this._subprocess = this._client.get_subprocess();
+        this._subprocess = launcher.spawnv(argv);
+        this._pid = Number(this._subprocess.get_identifier());
         this._exited = false;
         this.onExit = null;
         this._subprocess.wait_async(null, () => {
@@ -47,7 +47,7 @@ export class GhosttyClient {
     }
 
     ownsWindow(window) {
-        return this._client.owns_window(window);
+        return this._pid > 0 && window.get_pid() === this._pid;
     }
 
     terminate() {

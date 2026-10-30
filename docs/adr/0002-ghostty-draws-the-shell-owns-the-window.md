@@ -46,7 +46,9 @@ would not be shared. Rejected.
 
 **A dedicated Ghostty process launched by the shell as a Mutter client.**
 The shell spawns Ghostty through `Meta.WaylandClient`, so Mutter knows which
-windows belong to it and the extension never guesses by class or title. The
+windows belong to it and the extension never guesses by class or title
+(launching through `Meta.WaylandClient` is superseded by
+[0007](0007-launch-without-waylandclient.md)). The
 window is hidden from the window list, kept above, stuck to every workspace,
 placed and sized by the extension, and shown or hidden with a slide, which
 is the work the layer shell would have done. Ghostty keeps everything else:
