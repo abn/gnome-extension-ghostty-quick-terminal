@@ -52,3 +52,14 @@ elsewhere.
   tracking breakdowns causing visual ghosting.
 - Added decision record 0006 on filtering the hidden terminal from workspace
   animations, superseding 0005.
+
+## 2026-10-30
+
+- Changed how Ghostty is launched and how its window is identified: the
+  process is spawned with `Gio.Subprocess` and ownership is decided by pid and
+  class, after Ghostty 1.4 was found to crash on startup as a
+  `Meta.WaylandClient` subprocess, leaving the toggle with no window.
+- Added decision record 0007 on launching without `Meta.WaylandClient`,
+  superseding that part of 0002.
+- Updated the components table and the overview line that described the
+  process as a Mutter client.

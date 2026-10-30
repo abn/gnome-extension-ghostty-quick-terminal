@@ -73,3 +73,6 @@ behaviour, visibility and animation. Ghostty owns the terminal.
   on GNOME. See [0003](0003-ghostty-config-is-the-source-of-truth.md).
 - If libghostty ships a GTK widget, the companion-app option becomes worth a
   new decision record.
+- Superseded by [0007](0007-launch-without-waylandclient.md) for how the
+  process is launched and how its window is identified: Ghostty 1.4 crashes
+  when started as a `Meta.WaylandClient` subprocess.

@@ -15,7 +15,7 @@ covered by unit tests run with `gjs`.
 | `extension.js` | Enable and disable, keybinding, wiring of the parts below |
 | `lib/geometry.js` | Target rectangle and off-screen offset from work area, position and size. Pure. |
 | `lib/ghosttyConfig.js` | Parsing `ghostty +show-config` output into the quick-terminal settings. Pure. |
-| `lib/ghostty.js` | Launching Ghostty as a Mutter client, loading its config, watching the config directory |
+| `lib/ghostty.js` | Launching Ghostty, loading its config, watching the config directory |
 | `lib/terminal.js` | The window state machine: adopt, place, show, hide, toggle, autohide |
 | `lib/wlclipboard.js` | Recognising `wl-copy` and `wl-paste` surfaces by title and process command line |
 | `lib/dbus.js` | The `Toggle`, `Show`, `Hide` and `ReloadConfig` D-Bus methods |

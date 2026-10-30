@@ -1,9 +1,8 @@
-// Everything that talks to Ghostty: launching it as a Mutter client,
-// reading its config, and watching the config directory.
+// Everything that talks to Ghostty: launching it, reading its config, and
+// watching the config directory.
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Meta from 'gi://Meta';
 
 import {parseShowConfig, quickTerminalSettings} from './ghosttyConfig.js';
 
@@ -27,13 +26,25 @@ export function launchArgs(command, overridesPath, extraArgs = []) {
     ];
 }
 
-// A Ghostty process the shell launched. Mutter knows which windows belong
-// to it, so ownership is a fact rather than a guess.
+// The shell runs without WAYLAND_DISPLAY in its environment, so a child left
+// to inherit it connects to GDK's default socket name, which is the one Mutter
+// binds in a session. A shell that inherited the variable, as it does when it
+// is started from a session that exported it, hands its own value on instead.
+function setDisplayEnvironment(launcher) {
+    const display = GLib.getenv('WAYLAND_DISPLAY');
+    if (display)
+        launcher.setenv('WAYLAND_DISPLAY', display, true);
+}
+
+// A Ghostty process the shell launched. Mutter reads the pid of the Wayland
+// client behind a window from its socket credentials, so the window still
+// belongs to the process spawned here rather than to a guess about its title.
 export class GhosttyClient {
     constructor(argv) {
         const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.NONE});
-        this._client = Meta.WaylandClient.new_subprocess(global.context, launcher, argv);
-        this._subprocess = this._client.get_subprocess();
+        setDisplayEnvironment(launcher);
+        this._subprocess = launcher.spawnv(argv);
+        this._pid = Number(this._subprocess.get_identifier());
         this._exited = false;
         this.onExit = null;
         this._subprocess.wait_async(null, () => {
@@ -46,8 +57,12 @@ export class GhosttyClient {
         return !this._exited;
     }
 
+    // The class is set by launchArgs, so a window that lost its pid, or a
+    // wrapper that re-execs into a new one, is still identified by the name
+    // this extension asked Ghostty to use.
     ownsWindow(window) {
-        return this._client.owns_window(window);
+        return window.get_pid() === this._pid ||
+            window.get_gtk_application_id() === APP_ID;
     }
 
     terminate() {
