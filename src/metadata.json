@@ -3,7 +3,8 @@
   "name": "Ghostty Quick Terminal",
   "description": "Drop-down Ghostty terminal for GNOME on Wayland. The shell owns the window; Ghostty owns the terminal.",
   "shell-version": [
-    "50"
+    "50",
+    "51"
   ],
   "settings-schema": "org.gnome.shell.extensions.ghostty-quick-terminal",
   "url": "https://github.com/abn/gnome-extension-ghostty-quick-terminal",

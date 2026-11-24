@@ -276,7 +276,7 @@ export class QuickTerminal {
             this._watchClipboard(window);
         if (this._window || !this._client?.ownsWindow(window))
             return;
-        this._attach(window);
+        this._attach(window, {place: false});
         // Take over the first map: skip the shell's zoom and slide instead.
         Main.wm.skipNextEffect(this._actor);
         this._setActorState(hiddenState(this._config.position, this._target));
@@ -290,7 +290,7 @@ export class QuickTerminal {
         });
     }
 
-    _attach(window) {
+    _attach(window, {place = true} = {}) {
         this._window = window;
         this._actor = window.get_compositor_private();
         window.hide_from_window_list();
@@ -299,7 +299,10 @@ export class QuickTerminal {
         if (!window.above)
             window.make_above();
         this._unmanagedId = window.connect('unmanaged', () => this._onUnmanaged());
-        this._place();
+        if (place)
+            this._place();
+        else
+            this._target = this._computeTarget();
     }
 
     _onUnmanaged() {
@@ -337,21 +340,31 @@ export class QuickTerminal {
             : Main.layoutManager.primaryIndex;
     }
 
+    _computeTarget(monitor = this._monitorIndex()) {
+        const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
+        return targetRect(workArea, this._config.position,
+            clampFraction(this._settings.get_int('size')));
+    }
+
     _place() {
         if (!this._window)
             return;
         const monitor = this._monitorIndex();
+        this._target = this._computeTarget(monitor);
+        if (this._mapId !== 0)
+            return;
         if (this._window.get_monitor() !== monitor)
             this._window.move_to_monitor(monitor);
-        const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
-        this._target = targetRect(workArea, this._config.position,
-            clampFraction(this._settings.get_int('size')));
         this._applyGeometry();
     }
 
     // Wayland clients own their size, so keep asking until the frame
     // matches, then stop listening.
     _applyGeometry() {
+        if (sameRect(this._window.get_frame_rect(), this._target)) {
+            this._disarmFixup();
+            return;
+        }
         const {x, y, width, height} = this._target;
         this._window.move_resize_frame(false, x, y, width, height);
         if (sameRect(this._window.get_frame_rect(), this._target)) {

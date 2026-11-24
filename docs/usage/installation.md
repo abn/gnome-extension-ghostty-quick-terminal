@@ -9,7 +9,7 @@ status: draft
 
 ## Requirements
 
-- GNOME Shell 50 on Wayland.
+- GNOME Shell 50 or 51 on Wayland.
 - Ghostty 1.3 or later on the path.
 - `make`, `glib-compile-schemas` and `gnome-extensions`, which ship with
   GNOME.

@@ -38,5 +38,5 @@ See the [approach](design/approach.md) and the
 
 ## Status
 
-First working version targeting GNOME Shell 50. See
+First working version targeting GNOME Shell 50 and 51. See
 [installation](usage/installation.md).

@@ -13,7 +13,7 @@ terminal does, with your own config, fonts, theme and shell integration.
 
 ## Requirements
 
-- GNOME Shell 50 on Wayland
+- GNOME Shell 50 or 51 on Wayland
 - Ghostty 1.3 or later on the path
 
 ## Install

@@ -62,3 +62,9 @@ elsewhere.
 - Added decision record 0007 on launching without `Meta.WaylandClient`.
 - Updated the components table, the overview and the approach page, which
   described the process as a Mutter client.
+
+## 2026-11-24
+
+- Added GNOME Shell 51 support in `metadata.json` and the installation docs,
+  and deferred initial window placement until first map to avoid Mutter 51
+  pre-map `move_resize_frame` warnings.
