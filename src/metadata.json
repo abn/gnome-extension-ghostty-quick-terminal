@@ -8,5 +8,5 @@
   ],
   "settings-schema": "org.gnome.shell.extensions.ghostty-quick-terminal",
   "url": "https://github.com/abn/gnome-extension-ghostty-quick-terminal",
-  "version-name": "0.1.0"
+  "version-name": "0.2.0"
 }

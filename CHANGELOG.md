@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/abn/gnome-extension-ghostty-quick-terminal/compare/v0.1.0...v0.2.0) (2026-11-24)
+
+
+### Features
+
+* resize quick terminal by dragging its edge ([fba47e5](https://github.com/abn/gnome-extension-ghostty-quick-terminal/commit/fba47e556f6b765a8a3d0f040e5c41be95de7035))
+
+
+### Bug Fixes
+
+* keep focus restore on the active workspace ([569eb52](https://github.com/abn/gnome-extension-ghostty-quick-terminal/commit/569eb520ae1c507027137cf335c16bf851767e76))
+* keep hidden terminal hidden across locks ([fa98820](https://github.com/abn/gnome-extension-ghostty-quick-terminal/commit/fa98820bc9b007d610b762afd916afd4b4db45c5))
+* support GNOME Shell 51 ([7b021c2](https://github.com/abn/gnome-extension-ghostty-quick-terminal/commit/7b021c2ef13c4be6c8cb6fb7aebda8fbd1f872b4))
+
 ## 0.1.0 (2026-10-31)
 
 
