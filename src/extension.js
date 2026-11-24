@@ -11,8 +11,9 @@ import {ConfigWatcher, GhosttyClient, OVERRIDES_FILE, launchArgs, loadQuickTermi
 import {QuickTerminal} from './lib/terminal.js';
 
 // The shell disables extensions when the screen locks. The Ghostty process
-// is parked here across that so running jobs survive a lock.
-let parkedClient = null;
+// and its pre-lock visibility are parked here across that so running jobs
+// survive a lock without a hidden terminal reappearing on unlock.
+let parked = null;
 
 export default class GhosttyQuickTerminalExtension extends Extension {
     enable() {
@@ -25,9 +26,9 @@ export default class GhosttyQuickTerminalExtension extends Extension {
                 this.dir.get_child(OVERRIDES_FILE).get_path(),
                 this._settings.get_strv('extra-args'))),
         });
-        if (parkedClient?.alive)
-            this._terminal.adopt(parkedClient);
-        parkedClient = null;
+        if (parked?.client.alive)
+            this._terminal.adopt(parked.client, {visible: parked.visible});
+        parked = null;
 
         Main.wm.addKeybinding('toggle', this._settings,
             Meta.KeyBindingFlags.IGNORE_AUTOREPEAT,
@@ -42,6 +43,7 @@ export default class GhosttyQuickTerminalExtension extends Extension {
 
     disable() {
         const locked = Main.sessionMode.isLocked;
+        const restoreVisible = locked && this._terminal.visible && !this._terminal.autohide;
         this._cancellable.cancel();
         this._cancellable = null;
         this._watcher.destroy();
@@ -50,10 +52,10 @@ export default class GhosttyQuickTerminalExtension extends Extension {
         this._dbus = null;
         Main.wm.removeKeybinding('toggle');
         this._settings.disconnect(this._sizeChangedId);
-        const client = this._terminal.destroy();
+        const client = this._terminal.destroy({keepHidden: locked && !restoreVisible});
         this._terminal = null;
-        if (locked)
-            parkedClient = client;
+        if (locked && client)
+            parked = {client, visible: restoreVisible};
         else
             client?.terminate();
         this._settings = null;

@@ -210,8 +210,43 @@ ext_call Hide >/dev/null
 sleep 2
 lum=$(switch_shot 0 hidden)
 [[ "$lum" -gt 100 ]] || fail "the hidden terminal is drawn during a workspace switch: luminance $lum"
+ev 'global.workspace_manager.get_workspace_by_index(1).activate(global.get_current_time()); "ws1"' >/dev/null
+sleep 1
+ev 'global.workspace_manager.get_workspace_by_index(0).activate(global.get_current_time()); "ws0"' >/dev/null
+sleep 1
+shown=$(terminal_shown)
+[[ "$shown" == "[false]" ]] || fail "hidden terminal actor became visible across workspace switch: $shown"
+focused=$(ev 'global.display.focus_window ? global.display.focus_window.get_gtk_application_id() : null')
+[[ "$focused" != "is.abn.GhosttyQuickTerminal" ]] || fail 'hidden terminal stole focus across workspace switch'
 gsettings set org.gnome.mutter dynamic-workspaces true
 step 'the hidden terminal stays out of the workspace switch'
+
+# Screen lock disables extensions and parks the Ghostty client. A hidden
+# terminal must stay hidden on unlock; a visible one with autohide off stays
+# visible.
+ev 'Main.screenShield.lock(false); "locked"' >/dev/null
+sleep 1
+ev 'Main.screenShield.deactivate(false); "unlocked"' >/dev/null
+sleep 1
+shown=$(terminal_shown)
+[[ "$shown" == "[false]" ]] || fail "hidden terminal reappeared after lock/unlock: $shown"
+visible=$(gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/GhosttyQuickTerminal \
+  --method org.freedesktop.DBus.Properties.Get is.abn.GhosttyQuickTerminal Visible)
+[[ "$visible" == "(<false>,)" ]] || fail "Visible property is $visible after hidden lock/unlock"
+has=$(gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/GhosttyQuickTerminal \
+  --method org.freedesktop.DBus.Properties.Get is.abn.GhosttyQuickTerminal HasWindow)
+[[ "$has" == "(<true>,)" ]] || fail "HasWindow is $has after lock/unlock"
+ext_call Show >/dev/null
+sleep 2
+ev 'Main.screenShield.lock(false); "locked"' >/dev/null
+sleep 1
+ev 'Main.screenShield.deactivate(false); "unlocked"' >/dev/null
+sleep 1
+shown=$(terminal_shown)
+[[ "$shown" == "[true]" ]] || fail "visible terminal without autohide disappeared after lock/unlock: $shown"
+ext_call Hide >/dev/null
+sleep 1
+step 'lock/unlock preserves hidden and non-autohide visibility'
 
 # Focus returns to the window that had it before the terminal was shown.
 ghostty --gtk-single-instance=false --class=is.abn.Bystander > /dev/null 2>&1 &
@@ -262,6 +297,19 @@ kill $bystander 2>/dev/null
 [[ "$shown" == "[false]" ]] || fail "another window taking focus did not hide the terminal: $shown"
 sleep 1
 step 'autohide still works for other windows'
+
+# With autohide on, locking while visible keeps the terminal hidden on unlock.
+ext_call Show >/dev/null
+sleep 2
+ev 'Main.screenShield.lock(false); "locked"' >/dev/null
+sleep 1
+ev 'Main.screenShield.deactivate(false); "unlocked"' >/dev/null
+sleep 1
+shown=$(terminal_shown)
+[[ "$shown" == "[false]" ]] || fail "autohide terminal reappeared after lock/unlock: $shown"
+focused=$(ev 'global.display.focus_window ? global.display.focus_window.get_gtk_application_id() : null')
+[[ "$focused" != "is.abn.GhosttyQuickTerminal" ]] || fail 'autohide terminal kept focus after lock/unlock'
+step 'autohide terminal stays hidden after lock/unlock'
 
 # A process that outlives its last window must be replaced, not waited on.
 # A config-file passed after the extension's own overrides wins over them.

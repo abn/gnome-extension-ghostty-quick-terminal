@@ -51,6 +51,8 @@ export class QuickTerminal {
         this._state = 'hidden';
         this._fixup = null;
         this._unmanagedId = 0;
+        this._actorVisibleId = 0;
+        this._actorDestroyId = 0;
         this._mapId = 0;
         this._focusCheck = null;
         this._returnFocus = null;
@@ -67,6 +69,10 @@ export class QuickTerminal {
 
     get visible() {
         return this._state === 'visible' || this._state === 'showing';
+    }
+
+    get autohide() {
+        return this._config.autohide;
     }
 
     get hasWindow() {
@@ -90,23 +96,35 @@ export class QuickTerminal {
     }
 
     // Adopts a client launched earlier, for instance before a screen lock.
-    adopt(client) {
+    adopt(client, {visible} = {}) {
         this._client = client;
         client.onExit = () => this._onClientExit(client);
-        this._adoptOwnedWindow();
+        this._adoptOwnedWindow(null, {visible});
     }
 
     // Takes the first window the client owns, if any. Used after a lock and
     // when the current window closes while the process has another one.
     // A window that is on its way out is still listed at that moment.
-    _adoptOwnedWindow(closing = null) {
+    _adoptOwnedWindow(closing = null, {visible} = {}) {
         if (!this._client?.alive)
             return;
         for (const actor of global.get_window_actors()) {
             const window = actor.meta_window;
             if (window !== closing && this._client.ownsWindow(window)) {
                 this._attach(window);
-                this._state = actor.visible ? 'visible' : 'hidden';
+                if (visible === false) {
+                    this._state = 'hidden';
+                    this._setActorState(hiddenState(this._config.position, this._target));
+                    actor.hide();
+                    if (global.display.focus_window === window)
+                        this._restoreFocus();
+                } else if (visible === true) {
+                    this._state = 'visible';
+                    this._setActorState({x: 0, y: 0, opacity: 255});
+                    actor.show();
+                } else {
+                    this._state = actor.visible ? 'visible' : 'hidden';
+                }
                 return;
             }
         }
@@ -156,11 +174,12 @@ export class QuickTerminal {
         const focus = global.display.focus_window;
         if (focus && focus !== window)
             this._returnFocus = focus;
+        const wasVisible = this.visible;
+        this._state = 'showing';
+        if (!wasVisible)
+            this._setActorState(hiddenState(this._config.position, this._target));
         actor.show();
         Main.activateWindow(window);
-        if (!this.visible)
-            this._setActorState(hiddenState(this._config.position, this._target));
-        this._state = 'showing';
         this._ease({x: 0, y: 0, opacity: 255}, Clutter.AnimationMode.EASE_OUT_QUAD,
             () => (this._state = 'visible'));
     }
@@ -222,7 +241,7 @@ export class QuickTerminal {
 
     // Releases everything. Returns the client so the caller can decide
     // whether it lives on.
-    destroy() {
+    destroy({keepHidden = false} = {}) {
         global.display.disconnect(this._windowCreatedId);
         global.display.disconnect(this._focusId);
         global.display.disconnect(this._workareasId);
@@ -233,6 +252,8 @@ export class QuickTerminal {
             try {
                 this._actor.remove_all_transitions();
                 this._setActorState({x: 0, y: 0, opacity: 255});
+                if (keepHidden)
+                    this._actor.hide();
             } catch {
                 // The actor can already be disposed.
             }
@@ -299,6 +320,22 @@ export class QuickTerminal {
         if (!window.above)
             window.make_above();
         this._unmanagedId = window.connect('unmanaged', () => this._onUnmanaged());
+        // Mutter's sync_visibility re-shows unminimized actors on workspace
+        // switches and actor thaws; re-hide immediately while hidden.
+        this._actorVisibleId = this._actor.connect('notify::visible', () => {
+            if (this._state === 'hidden' && this._actor.visible) {
+                this._actor.hide();
+                if (global.display.focus_window === this._window)
+                    this._restoreFocus();
+            }
+        });
+        // Mutter disposes the window actor before emitting unmanaged on the
+        // window, so clear actor handles before _detach tries to disconnect.
+        this._actorDestroyId = this._actor.connect('destroy', () => {
+            this._actor = null;
+            this._actorVisibleId = 0;
+            this._actorDestroyId = 0;
+        });
         if (place)
             this._place();
         else
@@ -319,6 +356,12 @@ export class QuickTerminal {
         if (this._window && this._unmanagedId)
             this._window.disconnect(this._unmanagedId);
         this._unmanagedId = 0;
+        if (this._actor && this._actorVisibleId)
+            this._actor.disconnect(this._actorVisibleId);
+        this._actorVisibleId = 0;
+        if (this._actor && this._actorDestroyId)
+            this._actor.disconnect(this._actorDestroyId);
+        this._actorDestroyId = 0;
         this._window = null;
         this._actor = null;
         this._target = null;
@@ -394,6 +437,11 @@ export class QuickTerminal {
 
     _onFocusChanged() {
         this._cancelFocusCheck();
+        if (this._state === 'hidden') {
+            if (global.display.focus_window === this._window)
+                this._restoreFocus();
+            return;
+        }
         if (!this.visible || !this._config.autohide)
             return;
         const focus = global.display.focus_window;

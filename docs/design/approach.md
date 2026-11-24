@@ -53,6 +53,11 @@ moved on, as autohide lets it. Both directions use Clutter transitions on
 the actor, so nothing runs when no animation is in flight. See
 [0004](../adr/0004-hide-by-hiding-the-actor.md).
 
+Because the window stays mapped and unminimised while hidden, Mutter's
+`sync_visibility` paths can show its actor again on workspace switches or actor
+thaws. The extension guards actor visibility while the state is hidden and hands
+away input focus if it ever lands on the hidden window.
+
 The workspace switch animation builds clones of window actors on all
 workspaces. Because a clone overrides the source actor's visibility,
 transform and opacity, the hidden terminal would normally be drawn over
@@ -79,5 +84,8 @@ the extension focuses `wl-clipboard` surfaces as they appear.
 ## Lock and disable
 
 Disabling the extension normally ends the Ghostty process. When the shell
-disables extensions because the screen locked, the process is kept and
-adopted again on unlock, so running jobs survive a lock.
+disables extensions because the screen locked, the process and its visibility
+are kept across the lock. A hidden terminal, or a visible one with
+`quick-terminal-autohide` enabled, stays hidden on lock and re-adopts as hidden
+on unlock, so running jobs survive a lock without bringing a dismissed
+terminal back into the foreground.

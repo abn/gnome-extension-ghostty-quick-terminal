@@ -68,3 +68,6 @@ elsewhere.
 - Added GNOME Shell 51 support in `metadata.json` and the installation docs,
   and deferred initial window placement until first map to avoid Mutter 51
   pre-map `move_resize_frame` warnings.
+- Kept hidden terminals hidden across workspace switches and screen lock/unlock
+  by guarding actor visibility, evicting focus from hidden windows and parking
+  pre-lock visibility across lock disables.
