@@ -10,11 +10,40 @@ import Meta from 'gi://Meta';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {WorkspaceGroup} from 'resource:///org/gnome/shell/ui/workspaceAnimation.js';
 
-import {clampFraction, hiddenState, sameRect, targetRect} from './geometry.js';
+import {
+    clampFraction,
+    handleRect,
+    hiddenState,
+    sameRect,
+    sizePercentFromPointer,
+    sizePercentFromRect,
+    targetRect,
+} from './geometry.js';
 import {DEFAULT_CONFIG} from './ghosttyConfig.js';
+import {ResizeHandle} from './resizeHandle.js';
 import {isWlClipboard, looksLikeWlClipboard} from './wlclipboard.js';
 
 const FIXUP_LIMIT = 10;
+
+const RESIZE_GRAB_OPS = new Set([
+    Meta.GrabOp.RESIZING_NW,
+    Meta.GrabOp.RESIZING_N,
+    Meta.GrabOp.RESIZING_NE,
+    Meta.GrabOp.RESIZING_E,
+    Meta.GrabOp.RESIZING_SW,
+    Meta.GrabOp.RESIZING_S,
+    Meta.GrabOp.RESIZING_SE,
+    Meta.GrabOp.RESIZING_W,
+    Meta.GrabOp.KEYBOARD_RESIZING_UNKNOWN,
+    Meta.GrabOp.KEYBOARD_RESIZING_NW,
+    Meta.GrabOp.KEYBOARD_RESIZING_N,
+    Meta.GrabOp.KEYBOARD_RESIZING_NE,
+    Meta.GrabOp.KEYBOARD_RESIZING_E,
+    Meta.GrabOp.KEYBOARD_RESIZING_SW,
+    Meta.GrabOp.KEYBOARD_RESIZING_S,
+    Meta.GrabOp.KEYBOARD_RESIZING_SE,
+    Meta.GrabOp.KEYBOARD_RESIZING_W,
+]);
 
 const activeTerminals = new Set();
 let originalShouldShowWindow = null;
@@ -51,18 +80,31 @@ export class QuickTerminal {
         this._state = 'hidden';
         this._fixup = null;
         this._unmanagedId = 0;
+        this._sizeChangedId = 0;
+        this._posChangedId = 0;
         this._actorVisibleId = 0;
         this._actorDestroyId = 0;
         this._mapId = 0;
+        this._dragPercent = null;
         this._focusCheck = null;
         this._returnFocus = null;
         this._clipboardWatch = new Map();
+        this._handle = new ResizeHandle({
+            onResize: (x, y) => this._onHandleResize(x, y),
+            onResizeEnd: cancelled => this._onHandleResizeEnd(cancelled),
+        });
         this._windowCreatedId = global.display.connect('window-created',
             (display, window) => this._onWindowCreated(window));
         this._focusId = global.display.connect('notify::focus-window',
             () => this._onFocusChanged());
         this._workareasId = global.display.connect('workareas-changed',
             () => this._place());
+        this._restackedId = global.display.connect('restacked',
+            () => this._syncHandle());
+        this._grabOpBeginId = global.display.connect('grab-op-begin',
+            (display, window, op) => this._onGrabOpBegin(window, op));
+        this._grabOpEndId = global.display.connect('grab-op-end',
+            (display, window, op) => this._onGrabOpEnd(window, op));
         activeTerminals.add(this);
         patchWorkspaceAnimation();
     }
@@ -122,8 +164,11 @@ export class QuickTerminal {
                     this._state = 'visible';
                     this._setActorState({x: 0, y: 0, opacity: 255});
                     actor.show();
+                    this._syncHandle();
                 } else {
                     this._state = actor.visible ? 'visible' : 'hidden';
+                    if (this._state === 'visible')
+                        this._syncHandle();
                 }
                 return;
             }
@@ -167,6 +212,7 @@ export class QuickTerminal {
 
         const window = this._window;
         const actor = this._actor;
+        this._handle.hide();
         this._place();
         actor.remove_all_transitions();
         // Focus goes back here on the next hide unless it moves on its own
@@ -181,7 +227,12 @@ export class QuickTerminal {
         actor.show();
         Main.activateWindow(window);
         this._ease({x: 0, y: 0, opacity: 255}, Clutter.AnimationMode.EASE_OUT_QUAD,
-            () => (this._state = 'visible'));
+            () => {
+                if (this._window !== window || this._state !== 'showing')
+                    return;
+                this._state = 'visible';
+                this._syncHandle();
+            });
     }
 
     hide() {
@@ -190,6 +241,8 @@ export class QuickTerminal {
         const window = this._window;
         const actor = this._actor;
         this._state = 'hiding';
+        this._dragPercent = null;
+        this._handle.hide();
         actor.remove_all_transitions();
         this._ease(hiddenState(this._config.position, this._target), Clutter.AnimationMode.EASE_IN_QUAD,
             () => this._completeHide(window, actor));
@@ -252,6 +305,9 @@ export class QuickTerminal {
         global.display.disconnect(this._windowCreatedId);
         global.display.disconnect(this._focusId);
         global.display.disconnect(this._workareasId);
+        global.display.disconnect(this._restackedId);
+        global.display.disconnect(this._grabOpBeginId);
+        global.display.disconnect(this._grabOpEndId);
         this._cancelFocusCheck();
         for (const window of [...this._clipboardWatch.keys()])
             this._unwatchClipboard(window);
@@ -266,6 +322,8 @@ export class QuickTerminal {
             }
         }
         this._detach();
+        this._handle.destroy();
+        this._handle = null;
         const client = this._client;
         if (client)
             client.onExit = null;
@@ -327,6 +385,8 @@ export class QuickTerminal {
         if (!window.above)
             window.make_above();
         this._unmanagedId = window.connect('unmanaged', () => this._onUnmanaged());
+        this._sizeChangedId = window.connect('size-changed', () => this._syncHandle());
+        this._posChangedId = window.connect('position-changed', () => this._syncHandle());
         // Mutter's sync_visibility re-shows unminimized actors on workspace
         // switches and actor thaws; re-hide immediately while hidden.
         this._actorVisibleId = this._actor.connect('notify::visible', () => {
@@ -356,6 +416,8 @@ export class QuickTerminal {
     }
 
     _detach() {
+        this._dragPercent = null;
+        this._handle.hide();
         if (this._mapId)
             global.window_manager.disconnect(this._mapId);
         this._mapId = 0;
@@ -363,6 +425,12 @@ export class QuickTerminal {
         if (this._window && this._unmanagedId)
             this._window.disconnect(this._unmanagedId);
         this._unmanagedId = 0;
+        if (this._window && this._sizeChangedId)
+            this._window.disconnect(this._sizeChangedId);
+        this._sizeChangedId = 0;
+        if (this._window && this._posChangedId)
+            this._window.disconnect(this._posChangedId);
+        this._posChangedId = 0;
         if (this._actor && this._actorVisibleId)
             this._actor.disconnect(this._actorVisibleId);
         this._actorVisibleId = 0;
@@ -413,12 +481,14 @@ export class QuickTerminal {
     _applyGeometry() {
         if (sameRect(this._window.get_frame_rect(), this._target)) {
             this._disarmFixup();
+            this._syncHandle();
             return;
         }
         const {x, y, width, height} = this._target;
         this._window.move_resize_frame(false, x, y, width, height);
         if (sameRect(this._window.get_frame_rect(), this._target)) {
             this._disarmFixup();
+            this._syncHandle();
             return;
         }
         if (this._fixup)
@@ -442,6 +512,64 @@ export class QuickTerminal {
         this._fixup = null;
     }
 
+    _syncHandle() {
+        if (!this._window || !this._actor || this._state !== 'visible' || this._handle.dragging)
+            return;
+        const monitor = this._window.get_monitor();
+        const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
+        const rect = this._window.get_frame_rect();
+        this._handle.update(this._actor, handleRect(workArea, rect, this._config.position));
+        this._handle.show();
+    }
+
+    _onHandleResize(pointerX, pointerY) {
+        if (!this._window)
+            return;
+        const monitor = this._window.get_monitor();
+        const workArea = Main.layoutManager.getWorkAreaForMonitor(monitor);
+        const percent = sizePercentFromPointer(workArea, this._config.position, pointerX, pointerY);
+        const rect = targetRect(workArea, this._config.position, clampFraction(percent));
+        if (this._target && sameRect(rect, this._target))
+            return;
+        this._disarmFixup();
+        this._dragPercent = percent;
+        this._target = rect;
+        this._window.move_resize_frame(true, rect.x, rect.y, rect.width, rect.height);
+    }
+
+    _onHandleResizeEnd(cancelled) {
+        const percent = this._dragPercent;
+        this._dragPercent = null;
+        if (!this._window)
+            return;
+        if (cancelled || percent === null) {
+            this._place();
+            return;
+        }
+        if (percent !== this._settings.get_int('size'))
+            this._settings.set_int('size', percent);
+        else
+            this._place();
+    }
+
+    _onGrabOpBegin(window, op) {
+        if (window !== this._window || !RESIZE_GRAB_OPS.has(op))
+            return;
+        this._disarmFixup();
+        this._handle.hide();
+    }
+
+    _onGrabOpEnd(window, op) {
+        if (window !== this._window || !RESIZE_GRAB_OPS.has(op))
+            return;
+        const workArea = Main.layoutManager.getWorkAreaForMonitor(window.get_monitor());
+        const percent = sizePercentFromRect(workArea, window.get_frame_rect(), this._config.position);
+        if (percent !== this._settings.get_int('size'))
+            this._settings.set_int('size', percent);
+        else
+            this._place();
+    }
+
     _onFocusChanged() {
         this._cancelFocusCheck();
         if (this._state === 'hidden') {
@@ -449,7 +577,7 @@ export class QuickTerminal {
                 this._restoreFocus();
             return;
         }
-        if (!this.visible || !this._config.autohide)
+        if (!this.visible || !this._config.autohide || this._handle.dragging)
             return;
         const focus = global.display.focus_window;
         if (!focus || focus === this._window || focus.get_transient_for() === this._window)

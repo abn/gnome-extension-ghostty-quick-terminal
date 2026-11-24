@@ -40,7 +40,7 @@ or from the Extensions app.
 | Setting | Default | Effect |
 |---------|---------|--------|
 | Toggle shortcut | Control and grave | Shows, focuses or hides the terminal |
-| Size | 40 percent | Height for top and bottom, width for left and right, both for center |
+| Size | 40 percent | Height for top and bottom, width for left and right, both for center. Dragging the open edge or resizing via the window manager updates it |
 | Ghostty command | `ghostty` | The binary to launch |
 | Extra arguments | none | Appended to the Ghostty command line |
 

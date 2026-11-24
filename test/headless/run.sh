@@ -31,9 +31,11 @@ if [[ "${HEADLESS_INNER:-}" != 1 ]]; then
   exec env HEADLESS_INNER=1 dbus-run-session -- "$0" "$zip" "$uuid"
 fi
 
-# A fresh profile would show the welcome tour over everything.
+# A fresh profile would show the welcome tour over everything, and hot corners
+# would open the overview when the virtual pointer initializes at (0, 0).
 gsettings set org.gnome.shell welcome-dialog-last-shown-version \
   "$(gnome-shell --version | awk '{print $3}')"
+gsettings set org.gnome.desktop.interface enable-hot-corners false
 
 gnome-shell --unsafe-mode --headless --wayland --no-x11 --virtual-monitor 1280x800 \
   --wayland-display "$WAYLAND_DISPLAY" > "$sandbox/shell.log" 2>&1 &
@@ -289,6 +291,92 @@ sleep 1
 gsettings set org.gnome.mutter dynamic-workspaces true
 kill $bystander 2>/dev/null
 step 'focus returns to the previous window on the active workspace'
+
+# Dragging the open edge resizes the terminal live and persists size.
+ext_call Show >/dev/null
+sleep 2
+handle_info=$(ev '(() => {
+  const Clutter = imports.gi.Clutter;
+  const wa = global.get_window_actors().find(a => a.meta_window.get_gtk_application_id() === "is.abn.GhosttyQuickTerminal");
+  const r = wa.meta_window.get_frame_rect();
+  const wg = global.window_group.get_children();
+  const handle = wg.find(c => !c.meta_window && c.reactive && c.visible && Math.abs(c.width - r.width) <= 2);
+  const picked = handle ? global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, r.x + Math.floor(r.width / 2), r.y + r.height) : null;
+  const workArea = Main.layoutManager.getWorkAreaForMonitor(wa.meta_window.get_monitor());
+  return JSON.stringify({
+    found: Boolean(handle),
+    above: handle ? wg.indexOf(handle) > wg.indexOf(wa) : false,
+    cursor: handle ? handle.get_cursor_type() === Clutter.CursorType.NS_RESIZE : false,
+    picked: picked === handle,
+    rect: handle ? [handle.x, handle.y, handle.width, handle.height] : null,
+    cx: r.x + Math.floor(r.width / 2),
+    cy: r.y + r.height,
+    y60: Math.round(workArea.y + workArea.height * 0.60),
+    h60: Math.floor(workArea.height * 0.60),
+    h50: Math.floor(workArea.height * 0.50),
+    h40: Math.floor(workArea.height * 0.40),
+  });
+})()')
+python3 - "$handle_info" <<'PY_HANDLE' || fail "resize handle missing or misstacked: $handle_info"
+import json, sys
+h = json.loads(sys.argv[1])
+assert h['found'] and h['above'] and h['cursor'] and h['picked'], h
+assert h['rect'][3] == 8 and abs(h['rect'][1] + 4 - h['cy']) <= 2, h
+PY_HANDLE
+read -r drag_cx drag_cy drag_y60 drag_h60 drag_h50 drag_h40 <<<"$(python3 - "$handle_info" <<'PY_COORDS'
+import json, sys
+h = json.loads(sys.argv[1])
+print(h['cx'], h['cy'], h['y60'], h['h60'], h['h50'], h['h40'])
+PY_COORDS
+)"
+ev 'global.__testPtr = global.stage.get_context().get_backend().get_default_seat().create_virtual_device(imports.gi.Clutter.InputDeviceType.POINTER_DEVICE); "ptr"' >/dev/null
+sleep 0.3
+ev "global.__testPtr.notify_absolute_motion(imports.gi.GLib.get_monotonic_time(), $drag_cx, $drag_cy); 'warm'" >/dev/null
+sleep 0.2
+ev "global.__testPtr.notify_absolute_motion(imports.gi.GLib.get_monotonic_time(), $drag_cx, $drag_cy); 'hover'" >/dev/null
+sleep 0.2
+ev "global.__testPtr.notify_button(imports.gi.GLib.get_monotonic_time(), imports.gi.Clutter.BUTTON_PRIMARY, imports.gi.Clutter.ButtonState.PRESSED); 'press'" >/dev/null
+sleep 0.2
+ev "global.__testPtr.notify_absolute_motion(imports.gi.GLib.get_monotonic_time(), $drag_cx, $((drag_cy + 40))); 'drag1'" >/dev/null
+sleep 0.2
+ev "global.__testPtr.notify_absolute_motion(imports.gi.GLib.get_monotonic_time(), $drag_cx, $drag_y60); 'drag2'" >/dev/null
+sleep 0.2
+ev 'global.__testPtr.notify_button(imports.gi.GLib.get_monotonic_time(), imports.gi.Clutter.BUTTON_PRIMARY, imports.gi.Clutter.ButtonState.RELEASED); "release"' >/dev/null
+sleep 1
+drag_size=$(ext_settings get size)
+[[ "$drag_size" == "60" ]] || fail "edge drag expected size 60, got $drag_size"
+drag_frame=$(ev 'JSON.stringify((() => { const wa=global.get_window_actors().find(a=>a.meta_window.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal"); const r=wa.meta_window.get_frame_rect(); const h=global.window_group.get_children().find(c=>!c.meta_window&&c.reactive&&c.visible&&Math.abs(c.width-r.width)<=2); return {frame:[r.x,r.y,r.width,r.height], handleY:h?h.y:null}; })())')
+python3 - "$drag_frame" "$drag_h60" <<'PY_DRAG' || fail "edge drag did not resize frame or handle: $drag_frame"
+import json, sys
+d = json.loads(sys.argv[1])
+expected_h = int(sys.argv[2])
+r = d['frame']
+assert abs(r[3] - expected_h) <= 2, d
+assert d['handleY'] is not None and abs(d['handleY'] + 4 - (r[1] + r[3])) <= 2, d
+PY_DRAG
+ext_call Hide >/dev/null
+sleep 1
+hidden_handles=$(ev 'global.window_group.get_children().filter(c => !c.meta_window && c.reactive && c.visible && c.width >= 1200).length')
+[[ "$hidden_handles" == "0" ]] || fail "resize handle stayed visible after hide: $hidden_handles"
+ext_call Show >/dev/null
+sleep 1
+show_h=$(ev 'global.get_window_actors().find(a=>a.meta_window.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").meta_window.get_frame_rect().height')
+[[ $((show_h - drag_h60)) -ge -2 && $((show_h - drag_h60)) -le 2 ]] || fail "resized height did not persist across hide/show: got $show_h expected $drag_h60"
+
+# Window manager resize finishes through grab-op-end and also persists size.
+ev "(() => { const w = global.get_window_actors().find(a=>a.meta_window.get_gtk_application_id()===\"is.abn.GhosttyQuickTerminal\").meta_window; const wa = Main.layoutManager.getWorkAreaForMonitor(w.get_monitor()); w.move_resize_frame(true, wa.x, wa.y, wa.width, $drag_h50); return 'resized'; })()" >/dev/null
+sleep 0.5
+ev 'global.display.emit("grab-op-end", global.get_window_actors().find(a=>a.meta_window.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").meta_window, imports.gi.Meta.GrabOp.RESIZING_S); "grab-end"' >/dev/null
+sleep 0.5
+wm_size=$(ext_settings get size)
+[[ "$wm_size" == "50" ]] || fail "grab-op-end expected size 50, got $wm_size"
+ext_settings reset size
+sleep 1
+reset_h=$(ev 'global.get_window_actors().find(a=>a.meta_window.get_gtk_application_id()==="is.abn.GhosttyQuickTerminal").meta_window.get_frame_rect().height')
+[[ $((reset_h - drag_h40)) -ge -2 && $((reset_h - drag_h40)) -le 2 ]] || fail "resetting size did not restore height: got $reset_h expected $drag_h40"
+ext_call Hide >/dev/null
+sleep 1
+step 'dragging the open edge and WM resizes update size'
 
 # Shared config: a change in the Ghostty config moves the terminal.
 printf 'quick-terminal-position = bottom\n' > "$sandbox/config/ghostty/config"

@@ -1,6 +1,14 @@
 // Unit tests for the pure modules. Run with: gjs -m tests/run.js
 import System from 'system';
-import {clampFraction, targetRect, hiddenState, sameRect} from '../src/lib/geometry.js';
+import {
+    clampFraction,
+    handleRect,
+    hiddenState,
+    sameRect,
+    sizePercentFromPointer,
+    sizePercentFromRect,
+    targetRect,
+} from '../src/lib/geometry.js';
 import {parseShowConfig, quickTerminalSettings, DEFAULT_CONFIG} from '../src/lib/ghosttyConfig.js';
 
 let failures = 0;
@@ -38,6 +46,26 @@ eq(hiddenState('center', rect), {x: 0, y: 0, opacity: 0}, 'center fades');
 
 eq(sameRect(rect, {...rect}), true, 'same rect');
 eq(sameRect(rect, {...rect, height: 1}), false, 'different rect');
+
+eq(handleRect(wa, targetRect(wa, 'top', 0.4), 'top'), {x: 0, y: 335, width: 1280, height: 8, axis: 'vertical'}, 'top handle rect');
+eq(handleRect(wa, targetRect(wa, 'bottom', 0.4), 'bottom'), {x: 0, y: 489, width: 1280, height: 8, axis: 'vertical'}, 'bottom handle rect');
+eq(handleRect(wa, targetRect(wa, 'left', 0.5), 'left'), {x: 636, y: 32, width: 8, height: 768, axis: 'horizontal'}, 'left handle rect');
+eq(handleRect(wa, targetRect(wa, 'right', 0.5), 'right'), {x: 636, y: 32, width: 8, height: 768, axis: 'horizontal'}, 'right handle rect');
+eq(handleRect(wa, targetRect(wa, 'center', 0.5), 'center'), {x: 320, y: 604, width: 640, height: 8, axis: 'vertical'}, 'center handle rect');
+eq(handleRect(wa, targetRect(wa, 'top', 1), 'top'), {x: 0, y: 792, width: 1280, height: 8, axis: 'vertical'}, 'top handle clamps inside work area at 100%');
+eq(handleRect(wa, targetRect(wa, 'bottom', 1), 'bottom'), {x: 0, y: 32, width: 1280, height: 8, axis: 'vertical'}, 'bottom handle clamps inside work area at 100%');
+
+eq(sizePercentFromPointer(wa, 'top', 100, 32 + 384), 50, 'pointer percent top');
+eq(sizePercentFromPointer(wa, 'bottom', 100, 32 + 384), 50, 'pointer percent bottom');
+eq(sizePercentFromPointer(wa, 'left', 320, 100), 25, 'pointer percent left');
+eq(sizePercentFromPointer(wa, 'right', 960, 100), 25, 'pointer percent right');
+eq(sizePercentFromPointer(wa, 'center', 640, 32 + 384 + 192), 50, 'pointer percent center');
+eq(sizePercentFromPointer(wa, 'top', 100, 0), 10, 'pointer percent clamps low');
+eq(sizePercentFromPointer(wa, 'top', 100, 999), 100, 'pointer percent clamps high');
+
+eq(sizePercentFromRect(wa, {x: 0, y: 32, width: 1280, height: 384}, 'top'), 50, 'rect percent top');
+eq(sizePercentFromRect(wa, {x: 0, y: 32, width: 320, height: 768}, 'left'), 25, 'rect percent left');
+eq(sizePercentFromRect(wa, {x: 0, y: 32, width: 1280, height: 10}, 'top'), 10, 'rect percent clamps low');
 
 const sample = `
 # comment

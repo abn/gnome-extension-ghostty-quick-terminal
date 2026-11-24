@@ -73,3 +73,5 @@ elsewhere.
   pre-lock visibility across lock disables.
 - Restricted focus restoration on hide to the active workspace so hiding on an
   empty or different workspace no longer jumps back to another desktop.
+- Added an invisible open-edge drag handle and window-manager resize listener
+  so resizing the quick terminal updates and persists `size`.

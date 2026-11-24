@@ -39,6 +39,14 @@ settings. Wayland clients own their size, so after asking Mutter to move and
 resize the frame the extension keeps re-applying the geometry until the
 frame matches, then stops listening.
 
+Because the quick terminal runs without window decorations, `ResizeHandle`
+places a thin reactive Clutter actor in `global.window_group` directly above
+the terminal actor along its open edge, using a primary-button pan gesture
+and stage grab to resize the frame live while pointer drags cross other
+windows. Releasing the drag, or finishing a window-manager resize through
+`grab-op-end`, writes the resulting percentage back to the extension `size`
+setting so the new extent persists across toggles and locks.
+
 ## Visibility
 
 Showing reveals the window actor, activates the window, and eases the actor's

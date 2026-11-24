@@ -13,7 +13,8 @@ status: draft
 make test
 ```
 
-Runs `tests/run.js` under `gjs`. It covers the pure modules: geometry and
+Runs `tests/run.js` under `gjs`. It covers the pure modules: geometry
+(including drag-handle rectangles and pointer/frame size percentages) and
 Ghostty config parsing. Add a case there whenever those modules change.
 
 ## Headless integration
@@ -28,7 +29,8 @@ session. It installs the built extension there, enables it, calls the D-Bus
 `Toggle` method, checks that a Ghostty window owned by the extension sits at
 the expected rectangle, hides and shows it again, switches workspaces and locks
 the screen to check visibility is preserved, verifies focus restoration never
-switches workspaces, changes the Ghostty config
+switches workspaces, drags the open edge and triggers a window-manager resize to
+check `size` persists across hide and show, changes the Ghostty config
 and checks the terminal moved, turns autohide on and checks that `wl-copy`
 completes without hiding the terminal while another window does hide it,
 points the command at a missing binary and
