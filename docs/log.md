@@ -71,3 +71,5 @@ elsewhere.
 - Kept hidden terminals hidden across workspace switches and screen lock/unlock
   by guarding actor visibility, evicting focus from hidden windows and parking
   pre-lock visibility across lock disables.
+- Restricted focus restoration on hide to the active workspace so hiding on an
+  empty or different workspace no longer jumps back to another desktop.

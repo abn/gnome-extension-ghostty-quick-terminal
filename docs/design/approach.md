@@ -48,8 +48,10 @@ that is hidden from the window list, and lifting that for the call flips
 `skip-taskbar`, which makes the overview rebuild its window list and can
 reach objects the overview has already disposed. Hiding the actor leaves
 `skip-taskbar` set once, at adoption, and never touched again. Focus returns
-to the window that had it before the terminal was shown, unless it already
-moved on, as autohide lets it. Both directions use Clutter transitions on
+to the window on the active workspace that had it before the terminal was
+shown, or to the most recent eligible window on that workspace, clearing input
+focus when none exists so hiding never switches workspaces. Both directions
+use Clutter transitions on
 the actor, so nothing runs when no animation is in flight. See
 [0004](../adr/0004-hide-by-hiding-the-actor.md).
 

@@ -27,7 +27,8 @@ with its own config, data and cache directories so nothing touches your
 session. It installs the built extension there, enables it, calls the D-Bus
 `Toggle` method, checks that a Ghostty window owned by the extension sits at
 the expected rectangle, hides and shows it again, switches workspaces and locks
-the screen to check visibility is preserved, changes the Ghostty config
+the screen to check visibility is preserved, verifies focus restoration never
+switches workspaces, changes the Ghostty config
 and checks the terminal moved, turns autohide on and checks that `wl-copy`
 completes without hiding the terminal while another window does hide it,
 points the command at a missing binary and

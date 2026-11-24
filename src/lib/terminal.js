@@ -218,23 +218,30 @@ export class QuickTerminal {
     }
 
     // Hands focus back to the window that had it before the terminal was
-    // shown, or the most recent other window if that one is gone. Autohide
-    // moves focus on its own, in that case it stays put. The terminal is
-    // never left focused while hidden, so with nothing else around focus is
-    // cleared and keys reach the shell.
+    // shown, or the most recent other window on the active workspace if that
+    // one is gone or elsewhere. Autohide moves focus on its own, in that case
+    // it stays put. The terminal is never left focused while hidden, so with
+    // nothing eligible on the active workspace focus is cleared and keys
+    // reach the shell without switching workspaces.
     _restoreFocus() {
         const previous = this._returnFocus;
         this._returnFocus = null;
         const focus = global.display.focus_window;
         if (focus && focus !== this._window)
             return;
+        const activeWorkspace = global.workspace_manager.get_active_workspace();
         const actors = global.get_window_actors();
-        const alive = window => window && actors.some(a => a.meta_window === window);
-        const target = alive(previous)
+        const eligible = window => window &&
+            window !== this._window &&
+            !window.minimized &&
+            window.located_on_workspace(activeWorkspace) &&
+            actors.some(a => a.meta_window === window && a.visible);
+        const target = eligible(previous)
             ? previous
-            : global.display.get_tab_list(Meta.TabList.NORMAL, null).find(w => w !== this._window);
+            : global.display.get_tab_list(Meta.TabList.NORMAL, activeWorkspace)
+                .find(w => eligible(w));
         if (target)
-            Main.activateWindow(target);
+            target.activate(global.get_current_time());
         else
             global.display.unset_input_focus(global.get_current_time());
     }

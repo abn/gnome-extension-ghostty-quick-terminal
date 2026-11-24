@@ -259,9 +259,36 @@ sleep 2
 ext_call Hide >/dev/null
 sleep 2
 focused=$(ev 'global.display.focus_window ? global.display.focus_window.get_gtk_application_id() : null')
-kill $bystander 2>/dev/null
 [[ "$focused" == "is.abn.Bystander" ]] || fail "focus did not return to the previous window, got $focused"
-step 'focus returns to the previous window'
+
+# Hiding on another workspace must not pull the active workspace back to where
+# the previous window or MRU fallback lives.
+gsettings set org.gnome.mutter dynamic-workspaces false
+gsettings set org.gnome.desktop.wm.preferences num-workspaces 2
+ext_call Show >/dev/null
+sleep 2
+ev 'global.workspace_manager.get_workspace_by_index(1).activate(global.get_current_time()); "ws1"' >/dev/null
+sleep 1
+ext_call Hide >/dev/null
+sleep 2
+ws=$(ev 'global.workspace_manager.get_active_workspace_index()')
+[[ "$ws" == "1" ]] || fail "hiding after cross-workspace switch jumped to workspace $ws"
+focused=$(ev 'global.display.focus_window ? global.display.focus_window.get_gtk_application_id() : null')
+[[ "$focused" != "is.abn.GhosttyQuickTerminal" ]] || fail 'terminal kept focus after cross-workspace hide'
+
+ext_call Show >/dev/null
+sleep 2
+ext_call Hide >/dev/null
+sleep 2
+ws=$(ev 'global.workspace_manager.get_active_workspace_index()')
+[[ "$ws" == "1" ]] || fail "hiding on empty workspace jumped to workspace $ws"
+focused=$(ev 'global.display.focus_window ? global.display.focus_window.get_gtk_application_id() : null')
+[[ "$focused" != "is.abn.GhosttyQuickTerminal" ]] || fail 'terminal kept focus after empty-workspace hide'
+ev 'global.workspace_manager.get_workspace_by_index(0).activate(global.get_current_time()); "ws0"' >/dev/null
+sleep 1
+gsettings set org.gnome.mutter dynamic-workspaces true
+kill $bystander 2>/dev/null
+step 'focus returns to the previous window on the active workspace'
 
 # Shared config: a change in the Ghostty config moves the terminal.
 printf 'quick-terminal-position = bottom\n' > "$sandbox/config/ghostty/config"
